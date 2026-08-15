@@ -18,6 +18,10 @@ public class MemberPrincipal implements UserDetails {
         return member;
     }
 
+    public Long getMemberId() {
+        return member.getId();
+    }
+
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
         return List.of(new SimpleGrantedAuthority("ROLE_SELLER"));

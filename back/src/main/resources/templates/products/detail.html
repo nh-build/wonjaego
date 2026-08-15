@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('상품 상세')}"></head>
+<body>
+    <header th:replace="~{fragments/layout :: header}"></header>
+
+    <main>
+        <h2 th:text="${product.name}"></h2>
+        <p>SKU: <span th:text="${product.sku}"></span></p>
+        <p>가격: <span th:text="${product.price}"></span></p>
+        <p>총재고: <span th:text="${product.stockQuantity}"></span></p>
+        <p>품절임박 기준: <span th:text="${product.lowStockThreshold != null} ? ${product.lowStockThreshold} : '기본값(5)'"></span></p>
+
+        <a th:href="@{'/products/' + ${product.id} + '/edit'}">수정</a>
+        <a th:href="@{/products}">목록으로</a>
+    </main>
+
+    <footer th:replace="~{fragments/layout :: footer}"></footer>
+</body>
+</html>
