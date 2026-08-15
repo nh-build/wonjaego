@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('회원가입')}"></head>
+<body>
+    <header th:replace="~{fragments/layout :: header}"></header>
+
+    <main>
+        <h2>회원가입</h2>
+        <form th:action="@{/signup}" th:object="${form}" method="post">
+            <div>
+                <label>아이디 <input type="text" th:field="*{username}"></label>
+                <p th:if="${#fields.hasErrors('username')}" th:errors="*{username}"></p>
+            </div>
+            <div>
+                <label>비밀번호 <input type="password" th:field="*{password}"></label>
+                <p th:if="${#fields.hasErrors('password')}" th:errors="*{password}"></p>
+            </div>
+            <div>
+                <label>상호명 <input type="text" th:field="*{businessName}"></label>
+                <p th:if="${#fields.hasErrors('businessName')}" th:errors="*{businessName}"></p>
+            </div>
+            <button type="submit">가입하기</button>
+        </form>
+    </main>
+
+    <footer th:replace="~{fragments/layout :: footer}"></footer>
+</body>
+</html>

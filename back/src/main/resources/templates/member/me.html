@@ -1,0 +1,15 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('내 정보')}"></head>
+<body>
+    <header th:replace="~{fragments/layout :: header}"></header>
+
+    <main>
+        <h2>내 정보</h2>
+        <p>아이디: <span th:text="${member.username}"></span></p>
+        <p>상호명: <span th:text="${member.businessName}"></span></p>
+    </main>
+
+    <footer th:replace="~{fragments/layout :: footer}"></footer>
+</body>
+</html>

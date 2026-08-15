@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('로그인')}"></head>
+<body>
+    <header th:replace="~{fragments/layout :: header}"></header>
+
+    <main>
+        <h2>로그인</h2>
+        <p th:if="${param.error}">아이디 또는 비밀번호가 올바르지 않습니다.</p>
+        <p th:if="${param.registered}">가입이 완료됐습니다. 로그인해주세요.</p>
+        <p th:if="${param.logout}">로그아웃되었습니다.</p>
+        <form th:action="@{/login}" method="post">
+            <div>
+                <label>아이디 <input type="text" name="username"></label>
+            </div>
+            <div>
+                <label>비밀번호 <input type="password" name="password"></label>
+            </div>
+            <button type="submit">로그인</button>
+        </form>
+    </main>
+
+    <footer th:replace="~{fragments/layout :: footer}"></footer>
+</body>
+</html>
