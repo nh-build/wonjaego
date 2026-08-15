@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:fragment="head(title)">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title th:text="${title} + ' - 원재고'">원재고</title>
+</head>
+<body>
+    <header th:fragment="header">
+        <h1><a href="/">원재고</a></h1>
+        <nav>
+            <a href="/">홈</a>
+        </nav>
+    </header>
+    <footer th:fragment="footer">
+        <p>&copy; 원재고</p>
+    </footer>
+</body>
+</html>
