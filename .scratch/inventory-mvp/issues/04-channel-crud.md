@@ -6,10 +6,10 @@
 
 **Status:** ready-for-agent
 
-- [ ] `SalesChannel extends BaseEntity`: `member`(`@ManyToOne`), `name`(해당 Member 범위 내 unique).
-- [ ] `/channels`에서 채널 이름을 직접 입력해 등록할 수 있다(고정 목록이 아님).
-- [ ] 같은 Member 안에서 채널 이름이 중복되면 등록/수정이 거부되고 에러가 화면에 표시된다.
-- [ ] `/channels`에서 로그인한 Member 소유 채널 목록만 조회된다.
-- [ ] `/channels/{id}/edit`에서 채널 이름을 수정할 수 있다. 다른 Member 소유 채널의 id로 접근하면 404가 반환된다.
-- [ ] 삭제 액션 UI/엔드포인트는 존재하지만, 이 티켓 시점에는 Movement가 없으므로 항상 삭제가 성공한다(참조 제약은 05에서 추가).
-- [ ] MockMvc + 실제 test H2로 등록/이름 중복 거부/목록 스코핑/수정/404 흐름을 검증하는 테스트가 있다.
+- [x] `SalesChannel extends BaseEntity`: `member`(`@ManyToOne`), `name`(해당 Member 범위 내 unique).
+- [x] `/channels`에서 채널 이름을 직접 입력해 등록할 수 있다(고정 목록이 아님).
+- [x] 같은 Member 안에서 채널 이름이 중복되면 등록/수정이 거부되고 에러가 화면에 표시된다.
+- [x] `/channels`에서 로그인한 Member 소유 채널 목록만 조회된다.
+- [x] `/channels/{id}/edit`에서 채널 이름을 수정할 수 있다. 다른 Member 소유 채널의 id로 접근하면 404가 반환된다.
+- [x] 삭제 액션 UI/엔드포인트는 존재하지만, 이 티켓 시점에는 Movement가 없으므로 항상 삭제가 성공한다(참조 제약은 05에서 추가).
+- [x] MockMvc + 실제 test H2로 등록/이름 중복 거부/목록 스코핑/수정/404 흐름을 검증하는 테스트가 있다.

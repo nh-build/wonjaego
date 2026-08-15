@@ -62,6 +62,9 @@ public class ProductController {
                         @Valid @ModelAttribute("form") ProductEditForm form,
                         BindingResult bindingResult,
                         Model model) {
+        // Ownership must 404 regardless of validation outcome — checked unconditionally
+        // before branching on bindingResult, not just as a side effect of update() below.
+        productService.getOwned(principal.getMemberId(), id);
         if (!bindingResult.hasErrors()) {
             try {
                 productService.update(principal.getMemberId(), id, form);

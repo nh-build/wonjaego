@@ -12,6 +12,7 @@
             <a href="/">홈</a>
             <span sec:authorize="isAuthenticated()">
                 <a href="/products">상품</a>
+                <a href="/channels">채널</a>
                 <a href="/me">내 정보</a>
                 <form th:action="@{/logout}" method="post" style="display:inline">
                     <button type="submit">로그아웃</button>

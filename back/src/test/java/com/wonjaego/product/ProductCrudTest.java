@@ -193,6 +193,27 @@ class ProductCrudTest {
     }
 
     @Test
+    void 다른_회원_소유_상품은_수정_입력값이_잘못돼도_404가_반환된다() throws Exception {
+        MockHttpSession victimSession = AuthTestSupport.signUpAndLogin(mockMvc, "seller16", "password123", "가게16");
+        createProduct(victimSession, "피해자상품2", "VICTIM-003", "1000", "1");
+        Long victimProductId = findBySku("VICTIM-003").getId();
+
+        MockHttpSession attackerSession = AuthTestSupport.signUpAndLogin(mockMvc, "seller17", "password123", "가게17");
+
+        // A blank name fails @NotBlank validation before update()/getOwned() would
+        // normally run — ownership must still be enforced first.
+        mockMvc.perform(post("/products/" + victimProductId + "/edit")
+                        .session(attackerSession)
+                        .with(csrf())
+                        .param("name", "")
+                        .param("sku", "WHATEVER")
+                        .param("price", "1"))
+                .andExpect(status().isNotFound());
+
+        assertThat(productRepository.findById(victimProductId).orElseThrow().getSku()).isEqualTo("VICTIM-003");
+    }
+
+    @Test
     void 상품을_삭제할_수_있다() throws Exception {
         MockHttpSession session = AuthTestSupport.signUpAndLogin(mockMvc, "seller12", "password123", "가게12");
         createProduct(session, "삭제될상품", "DEL-001", "1000", "1");
