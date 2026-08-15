@@ -2,6 +2,7 @@ package com.wonjaego.channel;
 
 import com.wonjaego.member.Member;
 import com.wonjaego.member.MemberRepository;
+import com.wonjaego.movement.MovementRepository;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -13,6 +14,7 @@ public class SalesChannelService {
 
     private final SalesChannelRepository salesChannelRepository;
     private final MemberRepository memberRepository;
+    private final MovementRepository movementRepository;
 
     @Transactional(readOnly = true)
     public List<SalesChannel> listOwned(Long memberId) {
@@ -48,6 +50,9 @@ public class SalesChannelService {
     @Transactional
     public void delete(Long memberId, Long channelId) {
         SalesChannel channel = getOwned(memberId, channelId);
+        if (movementRepository.existsBySalesChannelId(channelId)) {
+            throw new SalesChannelHasMovementsException(channel.getName());
+        }
         salesChannelRepository.delete(channel);
     }
 }

@@ -7,6 +7,8 @@
     <main>
         <h2>상품 관리</h2>
 
+        <p th:if="${error}" th:text="${error}"></p>
+
         <section>
             <h3>상품 등록</h3>
             <form th:action="@{/products}" th:object="${form}" method="post">

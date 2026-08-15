@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('재고 기록')}"></head>
+<body>
+    <header th:replace="~{fragments/layout :: header}"></header>
+
+    <main>
+        <h2>재고 기록</h2>
+
+        <form th:action="@{/movements/new}" th:object="${form}" method="post">
+            <p th:if="${#fields.hasGlobalErrors()}" th:each="err : ${#fields.globalErrors()}" th:text="${err}"></p>
+
+            <div>
+                <label>상품
+                    <select th:field="*{productId}">
+                        <option value="">선택</option>
+                        <option th:each="p : ${products}" th:value="${p.id}"
+                                th:text="${p.name} + ' (' + ${p.sku} + ')'"></option>
+                    </select>
+                </label>
+                <p th:if="${#fields.hasErrors('productId')}" th:errors="*{productId}"></p>
+            </div>
+            <div>
+                <label>채널
+                    <select th:field="*{salesChannelId}">
+                        <option value="">선택</option>
+                        <option th:each="c : ${channels}" th:value="${c.id}" th:text="${c.name}"></option>
+                    </select>
+                </label>
+                <p th:if="${#fields.hasErrors('salesChannelId')}" th:errors="*{salesChannelId}"></p>
+            </div>
+            <div>
+                <label>구분
+                    <select th:field="*{type}">
+                        <option value="">선택</option>
+                        <option th:each="t : ${types}" th:value="${t}" th:text="${t.label}"></option>
+                    </select>
+                </label>
+                <p th:if="${#fields.hasErrors('type')}" th:errors="*{type}"></p>
+            </div>
+            <div>
+                <label>수량 <input type="number" th:field="*{quantity}"></label>
+                <p th:if="${#fields.hasErrors('quantity')}" th:errors="*{quantity}"></p>
+            </div>
+            <div>
+                <label>메모 (선택) <input type="text" th:field="*{memo}"></label>
+            </div>
+            <button type="submit">기록</button>
+        </form>
+    </main>
+
+    <footer th:replace="~{fragments/layout :: footer}"></footer>
+</body>
+</html>

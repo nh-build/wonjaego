@@ -13,6 +13,31 @@
 
         <a th:href="@{'/products/' + ${product.id} + '/edit'}">수정</a>
         <a th:href="@{/products}">목록으로</a>
+
+        <section>
+            <h3>재고 기록</h3>
+            <a th:href="@{/movements/new(productId=${product.id})}">재고 기록 추가</a>
+            <table>
+                <thead>
+                    <tr>
+                        <th>구분</th>
+                        <th>채널</th>
+                        <th>수량 변화</th>
+                        <th>메모</th>
+                        <th>일시</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr th:each="movement : ${movements}">
+                        <td th:text="${movement.type.label}"></td>
+                        <td th:text="${movement.salesChannel.name}"></td>
+                        <td th:text="${movement.quantityChange}"></td>
+                        <td th:text="${movement.memo}"></td>
+                        <td th:text="${movement.createdAt}"></td>
+                    </tr>
+                </tbody>
+            </table>
+        </section>
     </main>
 
     <footer th:replace="~{fragments/layout :: footer}"></footer>

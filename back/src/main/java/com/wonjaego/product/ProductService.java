@@ -2,6 +2,7 @@ package com.wonjaego.product;
 
 import com.wonjaego.member.Member;
 import com.wonjaego.member.MemberRepository;
+import com.wonjaego.movement.MovementRepository;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -13,6 +14,7 @@ public class ProductService {
 
     private final ProductRepository productRepository;
     private final MemberRepository memberRepository;
+    private final MovementRepository movementRepository;
 
     @Transactional(readOnly = true)
     public List<Product> listOwned(Long memberId) {
@@ -49,6 +51,9 @@ public class ProductService {
     @Transactional
     public void delete(Long memberId, Long productId) {
         Product product = getOwned(memberId, productId);
+        if (movementRepository.existsByProductId(productId)) {
+            throw new ProductHasMovementsException(product.getName());
+        }
         productRepository.delete(product);
     }
 }

@@ -72,8 +72,13 @@ public class SalesChannelController {
     }
 
     @PostMapping("/channels/{id}/delete")
-    public String delete(@AuthenticationPrincipal MemberPrincipal principal, @PathVariable Long id) {
-        salesChannelService.delete(principal.getMemberId(), id);
-        return "redirect:/channels";
+    public String delete(@AuthenticationPrincipal MemberPrincipal principal, @PathVariable Long id, Model model) {
+        try {
+            salesChannelService.delete(principal.getMemberId(), id);
+            return "redirect:/channels";
+        } catch (SalesChannelHasMovementsException e) {
+            model.addAttribute("error", e.getMessage());
+            return list(principal, model);
+        }
     }
 }

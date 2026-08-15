@@ -53,4 +53,12 @@ public class Product extends BaseEntity {
         this.price = price;
         this.lowStockThreshold = lowStockThreshold;
     }
+
+    public void adjustStock(int delta) {
+        int newQuantity = this.stockQuantity + delta;
+        if (newQuantity < 0) {
+            throw new InsufficientStockException(this.name);
+        }
+        this.stockQuantity = newQuantity;
+    }
 }

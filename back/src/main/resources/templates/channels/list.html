@@ -7,6 +7,8 @@
     <main>
         <h2>판매 채널 관리</h2>
 
+        <p th:if="${error}" th:text="${error}"></p>
+
         <section>
             <h3>채널 등록</h3>
             <form th:action="@{/channels}" th:object="${form}" method="post">

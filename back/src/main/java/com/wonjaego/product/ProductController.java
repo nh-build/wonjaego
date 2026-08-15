@@ -1,6 +1,7 @@
 package com.wonjaego.product;
 
 import com.wonjaego.member.MemberPrincipal;
+import com.wonjaego.movement.MovementService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -17,6 +18,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 public class ProductController {
 
     private final ProductService productService;
+    private final MovementService movementService;
 
     @GetMapping("/products")
     public String list(@AuthenticationPrincipal MemberPrincipal principal, Model model) {
@@ -45,6 +47,7 @@ public class ProductController {
     @GetMapping("/products/{id}")
     public String detail(@AuthenticationPrincipal MemberPrincipal principal, @PathVariable Long id, Model model) {
         model.addAttribute("product", productService.getOwned(principal.getMemberId(), id));
+        model.addAttribute("movements", movementService.listForProduct(principal.getMemberId(), id));
         return "products/detail";
     }
 
@@ -78,8 +81,13 @@ public class ProductController {
     }
 
     @PostMapping("/products/{id}/delete")
-    public String delete(@AuthenticationPrincipal MemberPrincipal principal, @PathVariable Long id) {
-        productService.delete(principal.getMemberId(), id);
-        return "redirect:/products";
+    public String delete(@AuthenticationPrincipal MemberPrincipal principal, @PathVariable Long id, Model model) {
+        try {
+            productService.delete(principal.getMemberId(), id);
+            return "redirect:/products";
+        } catch (ProductHasMovementsException e) {
+            model.addAttribute("error", e.getMessage());
+            return list(principal, model);
+        }
     }
 }
