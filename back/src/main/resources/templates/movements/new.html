@@ -4,57 +4,61 @@
 <body>
     <header th:replace="~{fragments/layout :: header}"></header>
 
-    <main>
-        <h2>재고 기록</h2>
+    <main class="flex-1 container mx-auto max-w-screen-md px-4 py-16 flex justify-center">
+        <div class="card w-full max-w-md bg-base-200 shadow-sm">
+            <div class="card-body">
+                <h2 class="card-title justify-center text-2xl">재고 기록</h2>
 
-        <form th:action="@{/movements/new}" th:object="${form}" method="post">
-            <p th:if="${#fields.hasGlobalErrors()}" th:each="err : ${#fields.globalErrors()}" th:text="${err}"></p>
+                <form th:action="@{/movements/new}" th:object="${form}" method="post" class="flex flex-col gap-4">
+                    <div th:if="${#fields.hasGlobalErrors()}" class="alert alert-error">
+                        <span th:each="err : ${#fields.globalErrors()}" th:text="${err}"></span>
+                    </div>
 
-            <div>
-                <label>상품 (옵션 조합)
-                    <select th:field="*{variantId}">
-                        <option value="">선택</option>
-                        <option th:each="v : ${variants}" th:value="${v.id}" th:text="${v.displayName}"></option>
-                    </select>
-                </label>
-                <p th:if="${#fields.hasErrors('variantId')}" th:errors="*{variantId}"></p>
+                    <div class="flex flex-col gap-1">
+                        <label class="label" for="variantId">상품 (옵션 조합)</label>
+                        <select id="variantId" th:field="*{variantId}" class="select select-bordered w-full">
+                            <option value="">선택</option>
+                            <option th:each="v : ${variants}" th:value="${v.id}" th:text="${v.displayName}"></option>
+                        </select>
+                        <span class="text-error text-sm" th:if="${#fields.hasErrors('variantId')}" th:errors="*{variantId}"></span>
+                    </div>
+                    <div class="flex flex-col gap-1">
+                        <label class="label" for="salesChannelId">채널</label>
+                        <select id="salesChannelId" th:field="*{salesChannelId}" class="select select-bordered w-full">
+                            <option value="">선택</option>
+                            <option th:each="c : ${channels}" th:value="${c.id}" th:text="${c.name}"></option>
+                        </select>
+                        <span class="text-error text-sm" th:if="${#fields.hasErrors('salesChannelId')}" th:errors="*{salesChannelId}"></span>
+                    </div>
+                    <div class="flex flex-col gap-1">
+                        <label class="label" for="type">구분</label>
+                        <select id="type" th:field="*{type}" class="select select-bordered w-full">
+                            <option value="">선택</option>
+                            <option th:each="t : ${types}" th:value="${t}" th:text="${t.label}"></option>
+                        </select>
+                        <span class="text-error text-sm" th:if="${#fields.hasErrors('type')}" th:errors="*{type}"></span>
+                    </div>
+                    <div class="flex flex-col gap-1">
+                        <label class="label" for="quantity">수량</label>
+                        <input id="quantity" type="number" th:field="*{quantity}" class="input input-bordered w-full">
+                        <span class="text-error text-sm" th:if="${#fields.hasErrors('quantity')}" th:errors="*{quantity}"></span>
+                    </div>
+                    <div class="flex flex-col gap-1">
+                        <label class="label" for="memo">메모 (선택)</label>
+                        <input id="memo" type="text" th:field="*{memo}" class="input input-bordered w-full">
+                    </div>
+                    <div class="flex flex-col gap-1">
+                        <label class="label" for="newVariantId">교환 대상 새 상품 (교환 시에만 입력, 비우면 동일 옵션 교환)</label>
+                        <select id="newVariantId" th:field="*{newVariantId}" class="select select-bordered w-full">
+                            <option value="">선택 안 함</option>
+                            <option th:each="v : ${variants}" th:value="${v.id}" th:text="${v.displayName}"></option>
+                        </select>
+                        <span class="text-error text-sm" th:if="${#fields.hasErrors('newVariantId')}" th:errors="*{newVariantId}"></span>
+                    </div>
+                    <button type="submit" class="btn btn-primary mt-2">기록</button>
+                </form>
             </div>
-            <div>
-                <label>채널
-                    <select th:field="*{salesChannelId}">
-                        <option value="">선택</option>
-                        <option th:each="c : ${channels}" th:value="${c.id}" th:text="${c.name}"></option>
-                    </select>
-                </label>
-                <p th:if="${#fields.hasErrors('salesChannelId')}" th:errors="*{salesChannelId}"></p>
-            </div>
-            <div>
-                <label>구분
-                    <select th:field="*{type}">
-                        <option value="">선택</option>
-                        <option th:each="t : ${types}" th:value="${t}" th:text="${t.label}"></option>
-                    </select>
-                </label>
-                <p th:if="${#fields.hasErrors('type')}" th:errors="*{type}"></p>
-            </div>
-            <div>
-                <label>수량 <input type="number" th:field="*{quantity}"></label>
-                <p th:if="${#fields.hasErrors('quantity')}" th:errors="*{quantity}"></p>
-            </div>
-            <div>
-                <label>메모 (선택) <input type="text" th:field="*{memo}"></label>
-            </div>
-            <div>
-                <label>교환 대상 새 상품 (교환 시에만 입력, 비우면 동일 옵션 교환)
-                    <select th:field="*{newVariantId}">
-                        <option value="">선택 안 함</option>
-                        <option th:each="v : ${variants}" th:value="${v.id}" th:text="${v.displayName}"></option>
-                    </select>
-                </label>
-                <p th:if="${#fields.hasErrors('newVariantId')}" th:errors="*{newVariantId}"></p>
-            </div>
-            <button type="submit">기록</button>
-        </form>
+        </div>
     </main>
 
     <footer th:replace="~{fragments/layout :: footer}"></footer>

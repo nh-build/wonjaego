@@ -4,8 +4,13 @@
 <body>
     <header th:replace="~{fragments/layout :: header}"></header>
 
-    <main>
-        <p>원재고에 오신 것을 환영합니다.</p>
+    <main class="flex-1 container mx-auto max-w-screen-md px-4 py-16 flex flex-col items-center justify-center text-center gap-6">
+        <h1 class="text-3xl font-bold">원재고</h1>
+        <p class="text-base-content/70">여러 판매 채널의 재고를 한 곳에서 관리하세요.<br>원재고에 오신 것을 환영합니다.</p>
+        <div class="flex gap-3">
+            <a href="/login" class="btn btn-ghost">로그인</a>
+            <a href="/signup" class="btn btn-primary">회원가입</a>
+        </div>
     </main>
 
     <footer th:replace="~{fragments/layout :: footer}"></footer>

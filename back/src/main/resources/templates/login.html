@@ -4,10 +4,10 @@
 <body>
     <header th:replace="~{fragments/layout :: header}"></header>
 
-    <main class="flex justify-center px-4 py-12">
+    <main class="flex-1 container mx-auto max-w-screen-md px-4 py-16 flex justify-center">
         <div class="card w-full max-w-sm bg-base-200 shadow-sm">
             <div class="card-body">
-                <h2 class="card-title justify-center">로그인</h2>
+                <h2 class="card-title justify-center text-2xl">로그인</h2>
 
                 <p th:if="${param.error}" class="alert alert-error text-sm py-2">아이디 또는 비밀번호가 올바르지 않습니다.</p>
                 <p th:if="${param.registered}" class="alert alert-success text-sm py-2">가입이 완료됐습니다. 로그인해주세요.</p>

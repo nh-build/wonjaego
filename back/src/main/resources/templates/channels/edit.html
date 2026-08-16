@@ -4,15 +4,20 @@
 <body>
     <header th:replace="~{fragments/layout :: header}"></header>
 
-    <main>
-        <h2>채널 수정</h2>
-        <form th:action="@{'/channels/' + ${channelId} + '/edit'}" th:object="${form}" method="post">
-            <div>
-                <label>채널 이름 <input type="text" th:field="*{name}"></label>
-                <p th:if="${#fields.hasErrors('name')}" th:errors="*{name}"></p>
+    <main class="flex-1 container mx-auto max-w-screen-md px-4 py-16 flex justify-center">
+        <div class="card w-full max-w-sm bg-base-200 shadow-sm">
+            <div class="card-body">
+                <h2 class="card-title justify-center text-2xl">채널 수정</h2>
+                <form th:action="@{'/channels/' + ${channelId} + '/edit'}" th:object="${form}" method="post" class="flex flex-col gap-4">
+                    <div class="flex flex-col gap-1">
+                        <label class="label" for="name">채널 이름</label>
+                        <input id="name" type="text" th:field="*{name}" class="input input-bordered w-full">
+                        <span class="text-error text-sm" th:if="${#fields.hasErrors('name')}" th:errors="*{name}"></span>
+                    </div>
+                    <button type="submit" class="btn btn-primary mt-2">저장</button>
+                </form>
             </div>
-            <button type="submit">저장</button>
-        </form>
+        </div>
     </main>
 
     <footer th:replace="~{fragments/layout :: footer}"></footer>

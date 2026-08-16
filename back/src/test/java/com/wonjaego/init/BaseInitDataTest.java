@@ -125,8 +125,10 @@ class BaseInitDataTest {
         // SKU("TSHIRT-BLACK-S")와 커스텀 기준(6)이 채워진 변형이기도 하다.
         mockMvc.perform(get("/").session(session))
                 .andExpect(status().isOk())
-                .andExpect(content().string(containsString("상품 수: 5")))
-                .andExpect(content().string(containsString("총재고 합계: 14")))
+                .andExpect(content().string(containsString("상품 수")))
+                .andExpect(content().string(containsString("5개")))
+                .andExpect(content().string(containsString("총재고 합계")))
+                .andExpect(content().string(containsString("14개")))
                 .andExpect(content().string(containsString("베이직 반팔 티셔츠")))
                 .andExpect(content().string(containsString("블랙 / S")))
                 .andExpect(content().string(containsString("TSHIRT-BLACK-S")));

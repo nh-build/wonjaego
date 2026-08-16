@@ -4,64 +4,83 @@
 <body>
     <header th:replace="~{fragments/layout :: header}"></header>
 
-    <main>
-        <h2 th:text="${product.name}"></h2>
-        <p>가격: <span th:text="${product.price}"></span></p>
+    <main class="flex-1 container mx-auto max-w-screen-md px-4 py-8">
+        <div class="flex items-start justify-between mb-2">
+            <div>
+                <h2 class="text-2xl font-bold" th:text="${product.name}"></h2>
+                <p class="text-base-content/60">가격: <span th:text="${product.price}"></span></p>
+            </div>
+            <div class="flex gap-2">
+                <a th:href="@{'/products/' + ${product.id} + '/edit'}" class="btn btn-ghost btn-sm">상품 수정</a>
+                <a th:href="@{/products}" class="btn btn-ghost btn-sm">목록으로</a>
+            </div>
+        </div>
 
-        <a th:href="@{'/products/' + ${product.id} + '/edit'}">수정</a>
-        <a th:href="@{/products}">목록으로</a>
-
-        <section>
-            <h3>옵션 조합 (변형)</h3>
-            <table>
-                <thead>
-                    <tr>
-                        <th>옵션</th>
-                        <th>SKU</th>
-                        <th>총재고</th>
-                        <th>품절임박 기준</th>
-                        <th></th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <tr th:each="variant : ${variants}">
-                        <td th:text="${#strings.isEmpty(variant.optionLabel)} ? ${product.name} : ${variant.optionLabel}"></td>
-                        <td th:text="${variant.sku}"></td>
-                        <td th:text="${variant.stockQuantity}"></td>
-                        <td th:text="${variant.lowStockThreshold != null} ? ${variant.lowStockThreshold} : '기본값(' + ${variant.effectiveLowStockThreshold} + ')'"></td>
-                        <td>
-                            <a th:href="@{'/products/' + ${product.id} + '/variants/' + ${variant.id} + '/edit'}">수정</a>
-                            <a th:href="@{/movements/new(variantId=${variant.id})}">재고 기록 추가</a>
-                        </td>
-                    </tr>
-                </tbody>
-            </table>
+        <section class="mt-8">
+            <h3 class="text-lg font-semibold mb-3">옵션 조합 (변형)</h3>
+            <div class="card bg-base-200 shadow-sm">
+                <div class="card-body p-4">
+                    <div class="overflow-x-auto">
+                        <table class="table">
+                            <thead>
+                                <tr>
+                                    <th>옵션</th>
+                                    <th>SKU</th>
+                                    <th>총재고</th>
+                                    <th>품절임박 기준</th>
+                                    <th class="text-right">관리</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr th:each="variant : ${variants}">
+                                    <td th:text="${#strings.isEmpty(variant.optionLabel)} ? ${product.name} : ${variant.optionLabel}"></td>
+                                    <td th:text="${variant.sku}"></td>
+                                    <td><span class="badge" th:classappend="${variant.lowStock} ? 'badge-error badge-outline' : 'badge-ghost'" th:text="${variant.stockQuantity}"></span></td>
+                                    <td th:text="${variant.lowStockThreshold != null} ? ${variant.lowStockThreshold} : '기본값(' + ${variant.effectiveLowStockThreshold} + ')'"></td>
+                                    <td class="text-right">
+                                        <div class="flex gap-2 justify-end">
+                                            <a th:href="@{'/products/' + ${product.id} + '/variants/' + ${variant.id} + '/edit'}" class="btn btn-ghost btn-sm">수정</a>
+                                            <a th:href="@{/movements/new(variantId=${variant.id})}" class="btn btn-primary btn-sm">재고 기록</a>
+                                        </div>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
         </section>
 
-        <section>
-            <h3>재고 기록</h3>
-            <table>
-                <thead>
-                    <tr>
-                        <th>구분</th>
-                        <th>옵션</th>
-                        <th>채널</th>
-                        <th>수량 변화</th>
-                        <th>메모</th>
-                        <th>일시</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <tr th:each="movement : ${movements}">
-                        <td th:text="${movement.type.label}"></td>
-                        <td th:text="${#strings.isEmpty(movement.variant.optionLabel)} ? '-' : ${movement.variant.optionLabel}"></td>
-                        <td th:text="${movement.salesChannel.name}"></td>
-                        <td th:text="${movement.quantityChange}"></td>
-                        <td th:text="${movement.memo}"></td>
-                        <td th:text="${movement.createdAt}"></td>
-                    </tr>
-                </tbody>
-            </table>
+        <section class="mt-8">
+            <h3 class="text-lg font-semibold mb-3">재고 기록</h3>
+            <div class="card bg-base-200 shadow-sm">
+                <div class="card-body p-4">
+                    <div class="overflow-x-auto">
+                        <table class="table">
+                            <thead>
+                                <tr>
+                                    <th>구분</th>
+                                    <th>옵션</th>
+                                    <th>채널</th>
+                                    <th>수량 변화</th>
+                                    <th>메모</th>
+                                    <th>일시</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr th:each="movement : ${movements}">
+                                    <td><span class="badge badge-ghost" th:text="${movement.type.label}"></span></td>
+                                    <td th:text="${#strings.isEmpty(movement.variant.optionLabel)} ? '-' : ${movement.variant.optionLabel}"></td>
+                                    <td th:text="${movement.salesChannel.name}"></td>
+                                    <td th:text="${movement.quantityChange}"></td>
+                                    <td th:text="${movement.memo}"></td>
+                                    <td class="text-base-content/60 text-sm" th:text="${movement.createdAt}"></td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
         </section>
     </main>
 

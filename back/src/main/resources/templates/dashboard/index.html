@@ -4,35 +4,49 @@
 <body>
     <header th:replace="~{fragments/layout :: header}"></header>
 
-    <main>
-        <h2>대시보드</h2>
+    <main class="flex-1 container mx-auto max-w-screen-md px-4 py-8">
+        <h2 class="text-2xl font-bold mb-6">대시보드</h2>
+
+        <div class="stats shadow bg-base-200 w-full mb-8">
+            <div class="stat place-items-center">
+                <div class="stat-title">상품 수</div>
+                <div class="stat-value text-primary" th:text="${totalVariantCount} + '개'"></div>
+            </div>
+            <div class="stat place-items-center">
+                <div class="stat-title">총재고 합계</div>
+                <div class="stat-value text-primary" th:text="${totalStockQuantity} + '개'"></div>
+            </div>
+        </div>
 
         <section>
-            <p th:text="'상품 수: ' + ${totalVariantCount} + '개'"></p>
-            <p th:text="'총재고 합계: ' + ${totalStockQuantity}"></p>
-        </section>
-
-        <section>
-            <h3>품절임박 상품</h3>
-            <p th:if="${#lists.isEmpty(lowStockVariants)}">품절임박 상품이 없습니다.</p>
-            <table th:unless="${#lists.isEmpty(lowStockVariants)}">
-                <thead>
-                    <tr>
-                        <th>상품명</th>
-                        <th>SKU</th>
-                        <th>총재고</th>
-                        <th>품절임박 기준</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <tr th:each="variant : ${lowStockVariants}">
-                        <td><a th:href="@{'/products/' + ${variant.product.id}}" th:text="${variant.displayName}"></a></td>
-                        <td th:text="${variant.sku}"></td>
-                        <td th:text="${variant.stockQuantity}"></td>
-                        <td th:text="${variant.effectiveLowStockThreshold}"></td>
-                    </tr>
-                </tbody>
-            </table>
+            <h3 class="text-lg font-semibold mb-3">품절임박 상품</h3>
+            <div class="card bg-base-200 shadow-sm">
+                <div class="card-body p-4">
+                    <p th:if="${#lists.isEmpty(lowStockVariants)}" class="text-base-content/60 text-center py-4">
+                        품절임박 상품이 없습니다.
+                    </p>
+                    <div th:unless="${#lists.isEmpty(lowStockVariants)}" class="overflow-x-auto">
+                        <table class="table">
+                            <thead>
+                                <tr>
+                                    <th>상품명</th>
+                                    <th>SKU</th>
+                                    <th>총재고</th>
+                                    <th>품절임박 기준</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr th:each="variant : ${lowStockVariants}">
+                                    <td><a class="link link-hover font-medium" th:href="@{'/products/' + ${variant.product.id}}" th:text="${variant.displayName}"></a></td>
+                                    <td th:text="${variant.sku}"></td>
+                                    <td><span class="badge badge-error badge-outline" th:text="${variant.stockQuantity}"></span></td>
+                                    <td th:text="${variant.effectiveLowStockThreshold}"></td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
         </section>
     </main>
 

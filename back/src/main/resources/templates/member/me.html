@@ -4,12 +4,14 @@
 <body>
     <header th:replace="~{fragments/layout :: header}"></header>
 
-    <main class="flex justify-center px-4 py-12">
+    <main class="flex-1 container mx-auto max-w-screen-md px-4 py-16 flex justify-center">
         <div class="card w-full max-w-sm bg-base-200 shadow-sm">
             <div class="card-body gap-3">
-                <h2 class="card-title justify-center">내 정보</h2>
-                <p><span class="font-medium">아이디:</span> <span th:text="${member.username}"></span></p>
-                <p><span class="font-medium">상호명:</span> <span th:text="${member.businessName}"></span></p>
+                <h2 class="card-title justify-center text-2xl">내 정보</h2>
+                <div class="flex flex-col gap-2 mt-2">
+                    <p><span class="font-medium">아이디</span><br><span th:text="${member.username}"></span></p>
+                    <p><span class="font-medium">상호명</span><br><span th:text="${member.businessName}"></span></p>
+                </div>
             </div>
         </div>
     </main>

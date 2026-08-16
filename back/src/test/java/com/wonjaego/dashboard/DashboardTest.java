@@ -90,8 +90,10 @@ class DashboardTest {
 
         mockMvc.perform(get("/").session(session))
                 .andExpect(status().isOk())
-                .andExpect(content().string(containsString("상품 수: 2")))
-                .andExpect(content().string(containsString("총재고 합계: 30")));
+                .andExpect(content().string(containsString("상품 수")))
+                .andExpect(content().string(containsString("2개")))
+                .andExpect(content().string(containsString("총재고 합계")))
+                .andExpect(content().string(containsString("30개")));
     }
 
     @Test
@@ -118,7 +120,8 @@ class DashboardTest {
         mockMvc.perform(get("/").session(session))
                 .andExpect(status().isOk())
                 .andExpect(content().string(not(containsString("남의상품"))))
-                .andExpect(content().string(containsString("상품 수: 0")))
-                .andExpect(content().string(containsString("총재고 합계: 0")));
+                .andExpect(content().string(containsString("상품 수")))
+                .andExpect(content().string(containsString("0개")))
+                .andExpect(content().string(containsString("총재고 합계")));
     }
 }
