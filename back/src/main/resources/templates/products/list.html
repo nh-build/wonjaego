@@ -17,21 +17,18 @@
                     <p th:if="${#fields.hasErrors('name')}" th:errors="*{name}"></p>
                 </div>
                 <div>
-                    <label>SKU <input type="text" th:field="*{sku}"></label>
-                    <p th:if="${#fields.hasErrors('sku')}" th:errors="*{sku}"></p>
-                </div>
-                <div>
                     <label>가격 <input type="number" step="0.01" th:field="*{price}"></label>
                     <p th:if="${#fields.hasErrors('price')}" th:errors="*{price}"></p>
                 </div>
-                <div>
-                    <label>초기 총재고 <input type="number" th:field="*{stockQuantity}"></label>
-                    <p th:if="${#fields.hasErrors('stockQuantity')}" th:errors="*{stockQuantity}"></p>
-                </div>
-                <div>
-                    <label>품절임박 기준 (선택, 비우면 기본값 5) <input type="number" th:field="*{lowStockThreshold}"></label>
-                    <p th:if="${#fields.hasErrors('lowStockThreshold')}" th:errors="*{lowStockThreshold}"></p>
-                </div>
+
+                <fieldset>
+                    <legend>옵션 그룹 (선택, 최대 5개 — 값은 콤마로 구분해 입력, 예: 블랙, 화이트)</legend>
+                    <div th:each="i : ${#numbers.sequence(0, maxOptionGroups - 1)}">
+                        <label>그룹명 <input type="text" th:field="*{optionGroups[__${i}__].name}" placeholder="예: 색상"></label>
+                        <label>값 <input type="text" th:field="*{optionGroups[__${i}__].valuesText}" placeholder="예: 블랙, 화이트"></label>
+                    </div>
+                </fieldset>
+
                 <button type="submit">등록</button>
             </form>
         </section>
@@ -42,20 +39,14 @@
                 <thead>
                     <tr>
                         <th>상품명</th>
-                        <th>SKU</th>
                         <th>가격</th>
-                        <th>총재고</th>
-                        <th>품절임박 기준</th>
                         <th></th>
                     </tr>
                 </thead>
                 <tbody>
                     <tr th:each="product : ${products}">
                         <td><a th:href="@{'/products/' + ${product.id}}" th:text="${product.name}"></a></td>
-                        <td th:text="${product.sku}"></td>
                         <td th:text="${product.price}"></td>
-                        <td th:text="${product.stockQuantity}"></td>
-                        <td th:text="${product.lowStockThreshold != null} ? ${product.lowStockThreshold} : '기본값(' + ${product.effectiveLowStockThreshold} + ')'"></td>
                         <td>
                             <a th:href="@{'/products/' + ${product.id} + '/edit'}">수정</a>
                             <form th:action="@{'/products/' + ${product.id} + '/delete'}" method="post" style="display:inline">

@@ -6,21 +6,44 @@
 
     <main>
         <h2 th:text="${product.name}"></h2>
-        <p>SKU: <span th:text="${product.sku}"></span></p>
         <p>가격: <span th:text="${product.price}"></span></p>
-        <p>총재고: <span th:text="${product.stockQuantity}"></span></p>
-        <p>품절임박 기준: <span th:text="${product.lowStockThreshold != null} ? ${product.lowStockThreshold} : '기본값(5)'"></span></p>
 
         <a th:href="@{'/products/' + ${product.id} + '/edit'}">수정</a>
         <a th:href="@{/products}">목록으로</a>
 
         <section>
+            <h3>옵션 조합 (변형)</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>옵션</th>
+                        <th>SKU</th>
+                        <th>총재고</th>
+                        <th>품절임박 기준</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr th:each="variant : ${variants}">
+                        <td th:text="${#strings.isEmpty(variant.optionLabel)} ? ${product.name} : ${variant.optionLabel}"></td>
+                        <td th:text="${variant.sku}"></td>
+                        <td th:text="${variant.stockQuantity}"></td>
+                        <td th:text="${variant.effectiveLowStockThreshold}"></td>
+                        <td>
+                            <a th:href="@{/movements/new(variantId=${variant.id})}">재고 기록 추가</a>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </section>
+
+        <section>
             <h3>재고 기록</h3>
-            <a th:href="@{/movements/new(productId=${product.id})}">재고 기록 추가</a>
             <table>
                 <thead>
                     <tr>
                         <th>구분</th>
+                        <th>옵션</th>
                         <th>채널</th>
                         <th>수량 변화</th>
                         <th>메모</th>
@@ -30,6 +53,7 @@
                 <tbody>
                     <tr th:each="movement : ${movements}">
                         <td th:text="${movement.type.label}"></td>
+                        <td th:text="${#strings.isEmpty(movement.variant.optionLabel)} ? '-' : ${movement.variant.optionLabel}"></td>
                         <td th:text="${movement.salesChannel.name}"></td>
                         <td th:text="${movement.quantityChange}"></td>
                         <td th:text="${movement.memo}"></td>

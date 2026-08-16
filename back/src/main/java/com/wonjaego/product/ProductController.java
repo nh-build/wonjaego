@@ -18,12 +18,14 @@ import org.springframework.web.bind.annotation.PostMapping;
 public class ProductController {
 
     private final ProductService productService;
+    private final ProductVariantService productVariantService;
     private final MovementService movementService;
 
     @GetMapping("/products")
     public String list(@AuthenticationPrincipal MemberPrincipal principal, Model model) {
         model.addAttribute("products", productService.listOwned(principal.getMemberId()));
         model.addAttribute("form", new ProductCreateForm());
+        model.addAttribute("maxOptionGroups", ProductCreateForm.MAX_OPTION_GROUPS);
         return "products/list";
     }
 
@@ -33,20 +35,18 @@ public class ProductController {
                           BindingResult bindingResult,
                           Model model) {
         if (!bindingResult.hasErrors()) {
-            try {
-                productService.create(principal.getMemberId(), form);
-                return "redirect:/products";
-            } catch (DuplicateSkuException e) {
-                bindingResult.rejectValue("sku", "duplicate", e.getMessage());
-            }
+            productService.create(principal.getMemberId(), form);
+            return "redirect:/products";
         }
         model.addAttribute("products", productService.listOwned(principal.getMemberId()));
+        model.addAttribute("maxOptionGroups", ProductCreateForm.MAX_OPTION_GROUPS);
         return "products/list";
     }
 
     @GetMapping("/products/{id}")
     public String detail(@AuthenticationPrincipal MemberPrincipal principal, @PathVariable Long id, Model model) {
         model.addAttribute("product", productService.getOwned(principal.getMemberId(), id));
+        model.addAttribute("variants", productVariantService.listForProduct(principal.getMemberId(), id));
         model.addAttribute("movements", movementService.listForProduct(principal.getMemberId(), id));
         return "products/detail";
     }
@@ -69,12 +69,8 @@ public class ProductController {
         // before branching on bindingResult, not just as a side effect of update() below.
         productService.getOwned(principal.getMemberId(), id);
         if (!bindingResult.hasErrors()) {
-            try {
-                productService.update(principal.getMemberId(), id, form);
-                return "redirect:/products/" + id;
-            } catch (DuplicateSkuException e) {
-                bindingResult.rejectValue("sku", "duplicate", e.getMessage());
-            }
+            productService.update(principal.getMemberId(), id, form);
+            return "redirect:/products/" + id;
         }
         model.addAttribute("productId", id);
         return "products/edit";

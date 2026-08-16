@@ -11,14 +11,13 @@
             <p th:if="${#fields.hasGlobalErrors()}" th:each="err : ${#fields.globalErrors()}" th:text="${err}"></p>
 
             <div>
-                <label>상품
-                    <select th:field="*{productId}">
+                <label>상품 (옵션 조합)
+                    <select th:field="*{variantId}">
                         <option value="">선택</option>
-                        <option th:each="p : ${products}" th:value="${p.id}"
-                                th:text="${p.name} + ' (' + ${p.sku} + ')'"></option>
+                        <option th:each="v : ${variants}" th:value="${v.id}" th:text="${v.displayName}"></option>
                     </select>
                 </label>
-                <p th:if="${#fields.hasErrors('productId')}" th:errors="*{productId}"></p>
+                <p th:if="${#fields.hasErrors('variantId')}" th:errors="*{variantId}"></p>
             </div>
             <div>
                 <label>채널
@@ -46,14 +45,13 @@
                 <label>메모 (선택) <input type="text" th:field="*{memo}"></label>
             </div>
             <div>
-                <label>교환 대상 새 상품 (교환 시에만 입력, 비우면 동일 상품 교환)
-                    <select th:field="*{newProductId}">
+                <label>교환 대상 새 상품 (교환 시에만 입력, 비우면 동일 옵션 교환)
+                    <select th:field="*{newVariantId}">
                         <option value="">선택 안 함</option>
-                        <option th:each="p : ${products}" th:value="${p.id}"
-                                th:text="${p.name} + ' (' + ${p.sku} + ')'"></option>
+                        <option th:each="v : ${variants}" th:value="${v.id}" th:text="${v.displayName}"></option>
                     </select>
                 </label>
-                <p th:if="${#fields.hasErrors('newProductId')}" th:errors="*{newProductId}"></p>
+                <p th:if="${#fields.hasErrors('newVariantId')}" th:errors="*{newVariantId}"></p>
             </div>
             <button type="submit">기록</button>
         </form>

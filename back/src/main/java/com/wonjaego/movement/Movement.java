@@ -2,7 +2,7 @@ package com.wonjaego.movement;
 
 import com.wonjaego.channel.SalesChannel;
 import com.wonjaego.common.BaseEntity;
-import com.wonjaego.product.Product;
+import com.wonjaego.product.ProductVariant;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -22,8 +22,8 @@ import lombok.NoArgsConstructor;
 public class Movement extends BaseEntity {
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "product_id", nullable = false)
-    private Product product;
+    @JoinColumn(name = "product_variant_id", nullable = false)
+    private ProductVariant variant;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "sales_channel_id", nullable = false)
@@ -38,8 +38,8 @@ public class Movement extends BaseEntity {
 
     private String memo;
 
-    public Movement(Product product, SalesChannel salesChannel, MovementType type, int quantityChange, String memo) {
-        this.product = product;
+    public Movement(ProductVariant variant, SalesChannel salesChannel, MovementType type, int quantityChange, String memo) {
+        this.variant = variant;
         this.salesChannel = salesChannel;
         this.type = type;
         this.quantityChange = quantityChange;

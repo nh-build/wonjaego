@@ -10,7 +10,7 @@ import lombok.Setter;
 public class MovementForm {
 
     @NotNull
-    private Long productId;
+    private Long variantId;
 
     @NotNull
     private Long salesChannelId;
@@ -24,6 +24,6 @@ public class MovementForm {
 
     private String memo;
 
-    // Exchange only: leave blank for a same-product exchange (no stock effect).
-    private Long newProductId;
+    // Exchange only: leave blank for a same-variant exchange (no stock effect).
+    private Long newVariantId;
 }

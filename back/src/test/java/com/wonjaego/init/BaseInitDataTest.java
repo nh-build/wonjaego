@@ -13,9 +13,9 @@ import com.wonjaego.channel.SalesChannelService;
 import com.wonjaego.member.MemberRepository;
 import com.wonjaego.member.MemberService;
 import com.wonjaego.movement.MovementService;
-import com.wonjaego.product.Product;
 import com.wonjaego.product.ProductRepository;
 import com.wonjaego.product.ProductService;
+import com.wonjaego.product.ProductVariantService;
 import jakarta.servlet.http.HttpSession;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.NoSuchBeanDefinitionException;
@@ -56,6 +56,9 @@ class BaseInitDataTest {
     private ProductService productService;
 
     @Autowired
+    private ProductVariantService productVariantService;
+
+    @Autowired
     private MovementService movementService;
 
     @Autowired
@@ -68,7 +71,8 @@ class BaseInitDataTest {
     // covers these tests instead. Rollback-on-partial-failure of the real production proxy is
     // not covered by this test class.
     private BaseInitData baseInitData() {
-        return new BaseInitData(memberRepository, memberService, salesChannelService, productService, movementService);
+        return new BaseInitData(memberRepository, memberService, salesChannelService, productService,
+                productVariantService, movementService);
     }
 
     private MockHttpSession loginAsSampleMember() throws Exception {
@@ -101,15 +105,15 @@ class BaseInitDataTest {
 
         MockHttpSession session = loginAsSampleMember();
 
+        // 블랙/S 변형은 20(입고) - 15(판매) = 5, 기본 품절임박 기준(5) 이하라 대시보드에 뜬다.
         mockMvc.perform(get("/").session(session))
                 .andExpect(status().isOk())
-                .andExpect(content().string(containsString("와이드 데님 팬츠")));
+                .andExpect(content().string(containsString("베이직 반팔 티셔츠")))
+                .andExpect(content().string(containsString("블랙 / S")));
 
         mockMvc.perform(get("/products").session(session))
                 .andExpect(status().isOk())
                 .andExpect(content().string(containsString("베이직 반팔 티셔츠")))
-                .andExpect(content().string(containsString("와이드 데님 팬츠")))
-                .andExpect(content().string(containsString("니트 가디건")))
                 .andExpect(content().string(containsString("레더 크로스백")));
 
         mockMvc.perform(get("/channels").session(session))
@@ -118,22 +122,16 @@ class BaseInitDataTest {
                 .andExpect(content().string(containsString("에이블리")))
                 .andExpect(content().string(containsString("지그재그")));
 
-        Product tshirt = productRepository.findAll().stream()
-                .filter(p -> p.getSku().equals("TSHIRT-001"))
+        Long tshirtId = productRepository.findAll().stream()
+                .filter(p -> p.getName().equals("베이직 반팔 티셔츠"))
                 .findFirst()
-                .orElseThrow();
-        assertThat(tshirt.getStockQuantity()).isEqualTo(15);
+                .orElseThrow()
+                .getId();
 
-        Product pants = productRepository.findAll().stream()
-                .filter(p -> p.getSku().equals("PANTS-001"))
-                .findFirst()
-                .orElseThrow();
-        assertThat(pants.getStockQuantity()).isEqualTo(2);
-        assertThat(pants.isLowStock()).isTrue();
-
-        mockMvc.perform(get("/products/" + tshirt.getId()).session(session))
+        mockMvc.perform(get("/products/" + tshirtId).session(session))
                 .andExpect(status().isOk())
                 .andExpect(content().string(containsString("입고")))
-                .andExpect(content().string(containsString("판매")));
+                .andExpect(content().string(containsString("판매")))
+                .andExpect(content().string(containsString("블랙 / S")));
     }
 }

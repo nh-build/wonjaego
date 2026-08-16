@@ -11,6 +11,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.wonjaego.testsupport.AuthTestSupport;
+import java.util.List;
+import java.util.stream.Collectors;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -33,83 +35,102 @@ class ProductCrudTest {
     @Autowired
     private ProductRepository productRepository;
 
-    private void createProduct(MockHttpSession session, String name, String sku, String price, String stockQuantity)
-            throws Exception {
+    @Autowired
+    private ProductVariantRepository productVariantRepository;
+
+    private void createProduct(MockHttpSession session, String name, String price) throws Exception {
         mockMvc.perform(post("/products")
-                .session(session)
-                .with(csrf())
-                .param("name", name)
-                .param("sku", sku)
-                .param("price", price)
-                .param("stockQuantity", stockQuantity));
+                        .session(session).with(csrf())
+                        .param("name", name)
+                        .param("price", price))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/products"));
     }
 
-    private Product findBySku(String sku) {
+    private void createProductWithOptions(MockHttpSession session, String name, String price,
+                                           String group1Name, String group1Values,
+                                           String group2Name, String group2Values) throws Exception {
+        mockMvc.perform(post("/products")
+                        .session(session).with(csrf())
+                        .param("name", name)
+                        .param("price", price)
+                        .param("optionGroups[0].name", group1Name)
+                        .param("optionGroups[0].valuesText", group1Values)
+                        .param("optionGroups[1].name", group2Name)
+                        .param("optionGroups[1].valuesText", group2Values))
+                .andExpect(status().is3xxRedirection());
+    }
+
+    private Product findByName(String name) {
         return productRepository.findAll().stream()
-                .filter(p -> p.getSku().equals(sku))
+                .filter(p -> p.getName().equals(name))
                 .findFirst()
                 .orElseThrow();
     }
 
     @Test
-    void 로그인한_회원은_상품을_등록하고_목록에서_확인할_수_있다() throws Exception {
+    void 옵션_없이_상품을_등록하면_조합_없는_변형_1개가_생성된다() throws Exception {
         MockHttpSession session = AuthTestSupport.signUpAndLogin(mockMvc, "seller1", "password123", "가게1");
+        createProduct(session, "무옵션상품", "10000");
 
-        mockMvc.perform(post("/products")
-                        .session(session)
-                        .with(csrf())
-                        .param("name", "티셔츠")
-                        .param("sku", "TSHIRT-001")
-                        .param("price", "19900")
-                        .param("stockQuantity", "10")
-                        .param("lowStockThreshold", "3"))
-                .andExpect(status().is3xxRedirection())
-                .andExpect(redirectedUrl("/products"));
+        Product product = findByName("무옵션상품");
+        List<ProductVariant> variants = productVariantRepository.findAllByProductIdWithOptions(product.getId());
 
-        mockMvc.perform(get("/products").session(session))
-                .andExpect(status().isOk())
-                .andExpect(content().string(containsString("티셔츠")));
+        assertThat(variants).hasSize(1);
+        assertThat(variants.get(0).getOptionLabel()).isEmpty();
+        assertThat(variants.get(0).getStockQuantity()).isEqualTo(0);
+        assertThat(variants.get(0).getSku()).isNull();
     }
 
     @Test
-    void 같은_회원_안에서_SKU가_중복되면_등록이_거부되고_중복_생성되지_않는다() throws Exception {
+    void 옵션_그룹_두_개를_입력하면_모든_조합이_자동_생성된다() throws Exception {
         MockHttpSession session = AuthTestSupport.signUpAndLogin(mockMvc, "seller2", "password123", "가게2");
-        createProduct(session, "상품A", "DUP-001", "1000", "5");
+        createProductWithOptions(session, "옵션상품", "10000", "색상", "블랙, 화이트", "사이즈", "S, M");
 
-        mockMvc.perform(post("/products")
-                        .session(session)
-                        .with(csrf())
-                        .param("name", "상품B")
-                        .param("sku", "DUP-001")
-                        .param("price", "2000")
-                        .param("stockQuantity", "1"))
-                .andExpect(status().isOk())
-                .andExpect(content().string(containsString("이미 사용 중")));
+        Product product = findByName("옵션상품");
+        List<ProductVariant> variants = productVariantRepository.findAllByProductIdWithOptions(product.getId());
 
-        assertThat(productRepository.findAll().stream().filter(p -> p.getSku().equals("DUP-001")).count())
-                .isEqualTo(1);
+        assertThat(variants).hasSize(4);
+        assertThat(variants.stream().map(ProductVariant::getOptionLabel).collect(Collectors.toSet()))
+                .containsExactlyInAnyOrder("블랙 / S", "블랙 / M", "화이트 / S", "화이트 / M");
     }
 
     @Test
-    void 초기_총재고에_음수를_입력하면_등록이_거부된다() throws Exception {
+    void 옵션_값의_앞뒤_공백과_중복은_정리된_뒤_조합이_생성된다() throws Exception {
         MockHttpSession session = AuthTestSupport.signUpAndLogin(mockMvc, "seller3", "password123", "가게3");
+        createProductWithOptions(session, "중복옵션상품", "10000", "색상", "블랙 , 블랙, 화이트 ", "사이즈", "S");
 
-        mockMvc.perform(post("/products")
-                        .session(session)
-                        .with(csrf())
-                        .param("name", "상품")
-                        .param("sku", "NEG-001")
-                        .param("price", "1000")
-                        .param("stockQuantity", "-1"))
-                .andExpect(status().isOk());
+        Product product = findByName("중복옵션상품");
+        List<ProductVariant> variants = productVariantRepository.findAllByProductIdWithOptions(product.getId());
 
-        assertThat(productRepository.findAll().stream().anyMatch(p -> p.getSku().equals("NEG-001"))).isFalse();
+        assertThat(variants).hasSize(2);
+        assertThat(variants.stream().map(ProductVariant::getOptionLabel))
+                .containsExactlyInAnyOrder("블랙 / S", "화이트 / S");
     }
 
     @Test
-    void 다른_회원의_목록에는_내_상품이_섞이지_않는다() throws Exception {
+    void 콤마만_입력된_옵션_그룹은_빈_슬롯처럼_무시되고_조합_없는_변형_1개가_생성된다() throws Exception {
+        MockHttpSession session = AuthTestSupport.signUpAndLogin(mockMvc, "seller16", "password123", "가게16");
+
+        mockMvc.perform(post("/products")
+                        .session(session).with(csrf())
+                        .param("name", "콤마만있는상품")
+                        .param("price", "1000")
+                        .param("optionGroups[0].name", "색상")
+                        .param("optionGroups[0].valuesText", ",,,"))
+                .andExpect(status().is3xxRedirection());
+
+        Product product = findByName("콤마만있는상품");
+        List<ProductVariant> variants = productVariantRepository.findAllByProductIdWithOptions(product.getId());
+
+        assertThat(variants).hasSize(1);
+        assertThat(variants.get(0).getOptionLabel()).isEmpty();
+    }
+
+    @Test
+    void 상품_목록에서_로그인한_회원_소유_상품만_조회된다() throws Exception {
         MockHttpSession session1 = AuthTestSupport.signUpAndLogin(mockMvc, "seller4", "password123", "가게4");
-        createProduct(session1, "회원4상품", "M4-001", "1000", "1");
+        createProduct(session1, "회원4상품", "1000");
 
         MockHttpSession session2 = AuthTestSupport.signUpAndLogin(mockMvc, "seller5", "password123", "가게5");
 
@@ -119,123 +140,86 @@ class ProductCrudTest {
     }
 
     @Test
+    void 상품_상세에서_변형_목록을_옵션_라벨과_함께_볼_수_있다() throws Exception {
+        MockHttpSession session = AuthTestSupport.signUpAndLogin(mockMvc, "seller6", "password123", "가게6");
+        createProductWithOptions(session, "상세조회상품", "1000", "색상", "블랙", "사이즈", "S, M");
+        Product product = findByName("상세조회상품");
+
+        mockMvc.perform(get("/products/" + product.getId()).session(session))
+                .andExpect(status().isOk())
+                .andExpect(content().string(containsString("블랙 / S")))
+                .andExpect(content().string(containsString("블랙 / M")));
+    }
+
+    @Test
     void 다른_회원_소유_상품_id로_상세에_접근하면_404() throws Exception {
-        MockHttpSession session1 = AuthTestSupport.signUpAndLogin(mockMvc, "seller6", "password123", "가게6");
-        createProduct(session1, "회원6상품", "M6-001", "1000", "1");
-        Long productId = findBySku("M6-001").getId();
+        MockHttpSession session1 = AuthTestSupport.signUpAndLogin(mockMvc, "seller7", "password123", "가게7");
+        createProduct(session1, "회원7상품", "1000");
+        Product product = findByName("회원7상품");
 
-        MockHttpSession session2 = AuthTestSupport.signUpAndLogin(mockMvc, "seller7", "password123", "가게7");
+        MockHttpSession session2 = AuthTestSupport.signUpAndLogin(mockMvc, "seller8", "password123", "가게8");
 
-        mockMvc.perform(get("/products/" + productId).session(session2))
+        mockMvc.perform(get("/products/" + product.getId()).session(session2))
                 .andExpect(status().isNotFound());
     }
 
     @Test
-    void 상품_정보를_수정할_수_있고_재고는_이_화면에서_바뀌지_않는다() throws Exception {
-        MockHttpSession session = AuthTestSupport.signUpAndLogin(mockMvc, "seller8", "password123", "가게8");
-        createProduct(session, "원래이름", "EDIT-001", "1000", "7");
-        Long productId = findBySku("EDIT-001").getId();
+    void 상품명과_가격을_수정할_수_있다() throws Exception {
+        MockHttpSession session = AuthTestSupport.signUpAndLogin(mockMvc, "seller9", "password123", "가게9");
+        createProduct(session, "원래이름", "1000");
+        Product product = findByName("원래이름");
 
-        mockMvc.perform(post("/products/" + productId + "/edit")
-                        .session(session)
-                        .with(csrf())
+        mockMvc.perform(post("/products/" + product.getId() + "/edit")
+                        .session(session).with(csrf())
                         .param("name", "바뀐이름")
-                        .param("sku", "EDIT-001")
-                        .param("price", "2000")
-                        .param("lowStockThreshold", "2"))
+                        .param("price", "2000"))
                 .andExpect(status().is3xxRedirection());
 
-        Product updated = productRepository.findById(productId).orElseThrow();
+        Product updated = productRepository.findById(product.getId()).orElseThrow();
         assertThat(updated.getName()).isEqualTo("바뀐이름");
         assertThat(updated.getPrice()).isEqualByComparingTo("2000");
-        assertThat(updated.getStockQuantity()).isEqualTo(7);
-    }
-
-    @Test
-    void 수정시_다른_상품과_SKU가_겹치면_거부된다() throws Exception {
-        MockHttpSession session = AuthTestSupport.signUpAndLogin(mockMvc, "seller9", "password123", "가게9");
-        createProduct(session, "상품A", "KEEP-001", "1000", "1");
-        createProduct(session, "상품B", "EDIT-002", "1000", "1");
-        Long productBId = findBySku("EDIT-002").getId();
-
-        mockMvc.perform(post("/products/" + productBId + "/edit")
-                        .session(session)
-                        .with(csrf())
-                        .param("name", "상품B")
-                        .param("sku", "KEEP-001")
-                        .param("price", "1000"))
-                .andExpect(status().isOk())
-                .andExpect(content().string(containsString("이미 사용 중")));
-
-        assertThat(productRepository.findById(productBId).orElseThrow().getSku()).isEqualTo("EDIT-002");
-    }
-
-    @Test
-    void 다른_회원_소유_상품은_SKU가_겹쳐도_수정할_수_없고_404가_반환된다() throws Exception {
-        MockHttpSession victimSession = AuthTestSupport.signUpAndLogin(mockMvc, "seller10", "password123", "가게10");
-        createProduct(victimSession, "피해자상품", "VICTIM-001", "1000", "1");
-        Long victimProductId = findBySku("VICTIM-001").getId();
-
-        MockHttpSession attackerSession = AuthTestSupport.signUpAndLogin(mockMvc, "seller11", "password123", "가게11");
-        createProduct(attackerSession, "공격자상품", "ATTACKER-001", "1000", "1");
-
-        // Attacker already owns a product with SKU "ATTACKER-001" — this must still 404
-        // on ownership, not fall through to a duplicate-SKU error.
-        mockMvc.perform(post("/products/" + victimProductId + "/edit")
-                        .session(attackerSession)
-                        .with(csrf())
-                        .param("name", "탈취시도")
-                        .param("sku", "ATTACKER-001")
-                        .param("price", "1"))
-                .andExpect(status().isNotFound());
-
-        assertThat(productRepository.findById(victimProductId).orElseThrow().getSku()).isEqualTo("VICTIM-001");
     }
 
     @Test
     void 다른_회원_소유_상품은_수정_입력값이_잘못돼도_404가_반환된다() throws Exception {
-        MockHttpSession victimSession = AuthTestSupport.signUpAndLogin(mockMvc, "seller16", "password123", "가게16");
-        createProduct(victimSession, "피해자상품2", "VICTIM-003", "1000", "1");
-        Long victimProductId = findBySku("VICTIM-003").getId();
+        MockHttpSession victimSession = AuthTestSupport.signUpAndLogin(mockMvc, "seller10", "password123", "가게10");
+        createProduct(victimSession, "피해자상품", "1000");
+        Product victimProduct = findByName("피해자상품");
 
-        MockHttpSession attackerSession = AuthTestSupport.signUpAndLogin(mockMvc, "seller17", "password123", "가게17");
+        MockHttpSession attackerSession = AuthTestSupport.signUpAndLogin(mockMvc, "seller11", "password123", "가게11");
 
-        // A blank name fails @NotBlank validation before update()/getOwned() would
-        // normally run — ownership must still be enforced first.
-        mockMvc.perform(post("/products/" + victimProductId + "/edit")
-                        .session(attackerSession)
-                        .with(csrf())
+        // A blank name fails @NotBlank validation before update() would normally run —
+        // ownership must still be enforced first.
+        mockMvc.perform(post("/products/" + victimProduct.getId() + "/edit")
+                        .session(attackerSession).with(csrf())
                         .param("name", "")
-                        .param("sku", "WHATEVER")
                         .param("price", "1"))
                 .andExpect(status().isNotFound());
-
-        assertThat(productRepository.findById(victimProductId).orElseThrow().getSku()).isEqualTo("VICTIM-003");
     }
 
     @Test
     void 상품을_삭제할_수_있다() throws Exception {
         MockHttpSession session = AuthTestSupport.signUpAndLogin(mockMvc, "seller12", "password123", "가게12");
-        createProduct(session, "삭제될상품", "DEL-001", "1000", "1");
-        Long productId = findBySku("DEL-001").getId();
+        createProduct(session, "삭제될상품", "1000");
+        Product product = findByName("삭제될상품");
 
-        mockMvc.perform(post("/products/" + productId + "/delete").session(session).with(csrf()))
+        mockMvc.perform(post("/products/" + product.getId() + "/delete").session(session).with(csrf()))
                 .andExpect(status().is3xxRedirection());
 
-        assertThat(productRepository.findById(productId)).isEmpty();
+        assertThat(productRepository.findById(product.getId())).isEmpty();
     }
 
     @Test
     void 다른_회원_소유_상품은_삭제할_수_없고_404가_반환된다() throws Exception {
         MockHttpSession victimSession = AuthTestSupport.signUpAndLogin(mockMvc, "seller13", "password123", "가게13");
-        createProduct(victimSession, "피해자상품2", "VICTIM-002", "1000", "1");
-        Long victimProductId = findBySku("VICTIM-002").getId();
+        createProduct(victimSession, "피해자상품2", "1000");
+        Product victimProduct = findByName("피해자상품2");
 
         MockHttpSession attackerSession = AuthTestSupport.signUpAndLogin(mockMvc, "seller14", "password123", "가게14");
 
-        mockMvc.perform(post("/products/" + victimProductId + "/delete").session(attackerSession).with(csrf()))
+        mockMvc.perform(post("/products/" + victimProduct.getId() + "/delete").session(attackerSession).with(csrf()))
                 .andExpect(status().isNotFound());
 
-        assertThat(productRepository.findById(victimProductId)).isPresent();
+        assertThat(productRepository.findById(victimProduct.getId())).isPresent();
     }
 }

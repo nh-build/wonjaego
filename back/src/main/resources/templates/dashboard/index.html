@@ -8,14 +8,14 @@
         <h2>대시보드</h2>
 
         <section>
-            <p th:text="'상품 수: ' + ${totalProductCount} + '개'"></p>
+            <p th:text="'상품 수: ' + ${totalVariantCount} + '개'"></p>
             <p th:text="'총재고 합계: ' + ${totalStockQuantity}"></p>
         </section>
 
         <section>
             <h3>품절임박 상품</h3>
-            <p th:if="${#lists.isEmpty(lowStockProducts)}">품절임박 상품이 없습니다.</p>
-            <table th:unless="${#lists.isEmpty(lowStockProducts)}">
+            <p th:if="${#lists.isEmpty(lowStockVariants)}">품절임박 상품이 없습니다.</p>
+            <table th:unless="${#lists.isEmpty(lowStockVariants)}">
                 <thead>
                     <tr>
                         <th>상품명</th>
@@ -25,11 +25,11 @@
                     </tr>
                 </thead>
                 <tbody>
-                    <tr th:each="product : ${lowStockProducts}">
-                        <td><a th:href="@{'/products/' + ${product.id}}" th:text="${product.name}"></a></td>
-                        <td th:text="${product.sku}"></td>
-                        <td th:text="${product.stockQuantity}"></td>
-                        <td th:text="${product.effectiveLowStockThreshold}"></td>
+                    <tr th:each="variant : ${lowStockVariants}">
+                        <td><a th:href="@{'/products/' + ${variant.product.id}}" th:text="${variant.displayName}"></a></td>
+                        <td th:text="${variant.sku}"></td>
+                        <td th:text="${variant.stockQuantity}"></td>
+                        <td th:text="${variant.effectiveLowStockThreshold}"></td>
                     </tr>
                 </tbody>
             </table>
