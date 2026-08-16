@@ -28,8 +28,9 @@
                         <td th:text="${#strings.isEmpty(variant.optionLabel)} ? ${product.name} : ${variant.optionLabel}"></td>
                         <td th:text="${variant.sku}"></td>
                         <td th:text="${variant.stockQuantity}"></td>
-                        <td th:text="${variant.effectiveLowStockThreshold}"></td>
+                        <td th:text="${variant.lowStockThreshold != null} ? ${variant.lowStockThreshold} : '기본값(' + ${variant.effectiveLowStockThreshold} + ')'"></td>
                         <td>
+                            <a th:href="@{'/products/' + ${product.id} + '/variants/' + ${variant.id} + '/edit'}">수정</a>
                             <a th:href="@{/movements/new(variantId=${variant.id})}">재고 기록 추가</a>
                         </td>
                     </tr>

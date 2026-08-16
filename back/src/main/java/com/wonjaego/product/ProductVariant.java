@@ -63,6 +63,11 @@ public class ProductVariant extends BaseEntity {
         this.stockQuantity = newQuantity;
     }
 
+    public void updateSkuAndThreshold(String sku, Integer lowStockThreshold) {
+        this.sku = sku;
+        this.lowStockThreshold = lowStockThreshold;
+    }
+
     public int getEffectiveLowStockThreshold() {
         return lowStockThreshold != null ? lowStockThreshold : DEFAULT_LOW_STOCK_THRESHOLD;
     }

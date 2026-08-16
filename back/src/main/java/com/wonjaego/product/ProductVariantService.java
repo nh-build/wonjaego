@@ -28,4 +28,25 @@ public class ProductVariantService {
         return productVariantRepository.findByIdAndMemberId(variantId, memberId)
                 .orElseThrow(() -> new ProductVariantNotFoundException(variantId));
     }
+
+    @Transactional
+    public ProductVariant update(Long memberId, Long variantId, ProductVariantEditForm form) {
+        ProductVariant variant = getOwned(memberId, variantId);
+        String sku = normalizeSku(form.getSku());
+        if (sku != null && productVariantRepository.existsByMemberIdAndSkuAndIdNot(memberId, sku, variantId)) {
+            throw new DuplicateSkuException(sku);
+        }
+        variant.updateSkuAndThreshold(sku, form.getLowStockThreshold());
+        return variant;
+    }
+
+    // A blank SKU input means "no SKU" — store null, not an empty string, so it stays
+    // consistent with a freshly-generated variant's initial state.
+    private String normalizeSku(String sku) {
+        if (sku == null) {
+            return null;
+        }
+        String trimmed = sku.trim();
+        return trimmed.isEmpty() ? null : trimmed;
+    }
 }

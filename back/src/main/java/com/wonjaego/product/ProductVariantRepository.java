@@ -20,10 +20,14 @@ public interface ProductVariantRepository extends JpaRepository<ProductVariant, 
             + "WHERE v.member.id = :memberId ORDER BY v.product.id, v.id")
     List<ProductVariant> findAllByMemberIdWithProductAndOptions(@Param("memberId") Long memberId);
 
-    @Query("SELECT v FROM ProductVariant v JOIN FETCH v.product WHERE v.id = :id AND v.member.id = :memberId")
+    // Fetches product AND optionValues/optionGroup, since getOwned() backs both simple
+    // ownership checks (only needs product) and detail/edit-screen rendering (needs the
+    // option label too) — one query covers every current caller safely under OSIV-off.
+    @Query("SELECT DISTINCT v FROM ProductVariant v "
+            + "JOIN FETCH v.product "
+            + "LEFT JOIN FETCH v.optionValues ov LEFT JOIN FETCH ov.optionGroup "
+            + "WHERE v.id = :id AND v.member.id = :memberId")
     Optional<ProductVariant> findByIdAndMemberId(@Param("id") Long id, @Param("memberId") Long memberId);
-
-    boolean existsByMemberIdAndSku(Long memberId, String sku);
 
     boolean existsByMemberIdAndSkuAndIdNot(Long memberId, String sku, Long id);
 

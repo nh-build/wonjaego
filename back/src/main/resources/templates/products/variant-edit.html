@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" data-theme="wonjaego">
+<head th:replace="~{fragments/layout :: head('변형 수정')}"></head>
+<body>
+    <header th:replace="~{fragments/layout :: header}"></header>
+
+    <main>
+        <h2>변형 수정</h2>
+        <p>옵션: <span th:text="${#strings.isEmpty(variant.optionLabel)} ? ${variant.product.name} : ${variant.optionLabel}"></span></p>
+
+        <form th:action="@{'/products/' + ${productId} + '/variants/' + ${variant.id} + '/edit'}" th:object="${form}" method="post">
+            <div>
+                <label>SKU (선택) <input type="text" th:field="*{sku}"></label>
+                <p th:if="${#fields.hasErrors('sku')}" th:errors="*{sku}"></p>
+            </div>
+            <div>
+                <label>품절임박 기준 (선택, 비우면 기본값 5) <input type="number" th:field="*{lowStockThreshold}"></label>
+                <p th:if="${#fields.hasErrors('lowStockThreshold')}" th:errors="*{lowStockThreshold}"></p>
+            </div>
+            <button type="submit">저장</button>
+        </form>
+        <a th:href="@{'/products/' + ${productId}}">상품으로 돌아가기</a>
+    </main>
+
+    <footer th:replace="~{fragments/layout :: footer}"></footer>
+</body>
+</html>
