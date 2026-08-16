@@ -20,6 +20,8 @@ import lombok.NoArgsConstructor;
 @Table(name = "products", uniqueConstraints = @UniqueConstraint(columnNames = {"member_id", "sku"}))
 public class Product extends BaseEntity {
 
+    public static final int DEFAULT_LOW_STOCK_THRESHOLD = 5;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "member_id", nullable = false)
     private Member member;
@@ -60,5 +62,13 @@ public class Product extends BaseEntity {
             throw new InsufficientStockException(this.name);
         }
         this.stockQuantity = newQuantity;
+    }
+
+    public int getEffectiveLowStockThreshold() {
+        return lowStockThreshold != null ? lowStockThreshold : DEFAULT_LOW_STOCK_THRESHOLD;
+    }
+
+    public boolean isLowStock() {
+        return stockQuantity <= getEffectiveLowStockThreshold();
     }
 }

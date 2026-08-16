@@ -55,7 +55,7 @@
                         <td th:text="${product.sku}"></td>
                         <td th:text="${product.price}"></td>
                         <td th:text="${product.stockQuantity}"></td>
-                        <td th:text="${product.lowStockThreshold != null} ? ${product.lowStockThreshold} : '기본값(5)'"></td>
+                        <td th:text="${product.lowStockThreshold != null} ? ${product.lowStockThreshold} : '기본값(' + ${product.effectiveLowStockThreshold} + ')'"></td>
                         <td>
                             <a th:href="@{'/products/' + ${product.id} + '/edit'}">수정</a>
                             <form th:action="@{'/products/' + ${product.id} + '/delete'}" method="post" style="display:inline">
