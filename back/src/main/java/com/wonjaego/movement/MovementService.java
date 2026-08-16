@@ -31,10 +31,34 @@ public class MovementService {
         int quantityChange = switch (type) {
             case INBOUND, RETURN -> quantity;
             case SALE -> -quantity;
+            case EXCHANGE -> throw new IllegalArgumentException("EXCHANGE는 recordExchange()로 기록해야 합니다.");
         };
 
         product.adjustStock(quantityChange);
         Movement movement = new Movement(product, channel, type, quantityChange, memo);
         return movementRepository.save(movement);
+    }
+
+    @Transactional
+    public void recordExchange(Long memberId, Long originalProductId, Long salesChannelId, Long newProductId,
+                                int quantity, String memo) {
+        Product originalProduct = productService.getOwned(memberId, originalProductId);
+        SalesChannel channel = salesChannelService.getOwned(memberId, salesChannelId);
+
+        if (newProductId == null || newProductId.equals(originalProductId)) {
+            movementRepository.save(new Movement(originalProduct, channel, MovementType.EXCHANGE, 0, memo));
+            return;
+        }
+
+        Product newProduct = productService.getOwned(memberId, newProductId);
+
+        // newProduct's adjustment is the only one that can fail (it's the only negative
+        // delta), so it must run first — otherwise a shortage on newProduct would leave
+        // originalProduct already mutated in-memory before the exception unwinds.
+        newProduct.adjustStock(-quantity);
+        originalProduct.adjustStock(quantity);
+
+        movementRepository.save(new Movement(originalProduct, channel, MovementType.EXCHANGE, quantity, memo));
+        movementRepository.save(new Movement(newProduct, channel, MovementType.EXCHANGE, -quantity, memo));
     }
 }

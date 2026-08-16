@@ -23,4 +23,7 @@ public class MovementForm {
     private Integer quantity;
 
     private String memo;
+
+    // Exchange only: leave blank for a same-product exchange (no stock effect).
+    private Long newProductId;
 }

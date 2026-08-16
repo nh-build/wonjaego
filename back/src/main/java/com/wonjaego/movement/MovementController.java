@@ -47,10 +47,18 @@ public class MovementController {
         if (form.getSalesChannelId() != null) {
             salesChannelService.getOwned(principal.getMemberId(), form.getSalesChannelId());
         }
+        if (form.getNewProductId() != null) {
+            productService.getOwned(principal.getMemberId(), form.getNewProductId());
+        }
         if (!bindingResult.hasErrors()) {
             try {
-                movementService.record(principal.getMemberId(), form.getProductId(), form.getSalesChannelId(),
-                        form.getType(), form.getQuantity(), form.getMemo());
+                if (form.getType() == MovementType.EXCHANGE) {
+                    movementService.recordExchange(principal.getMemberId(), form.getProductId(), form.getSalesChannelId(),
+                            form.getNewProductId(), form.getQuantity(), form.getMemo());
+                } else {
+                    movementService.record(principal.getMemberId(), form.getProductId(), form.getSalesChannelId(),
+                            form.getType(), form.getQuantity(), form.getMemo());
+                }
                 return "redirect:/products/" + form.getProductId();
             } catch (InsufficientStockException e) {
                 bindingResult.reject("insufficientStock", e.getMessage());

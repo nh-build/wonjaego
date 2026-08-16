@@ -45,6 +45,16 @@
             <div>
                 <label>메모 (선택) <input type="text" th:field="*{memo}"></label>
             </div>
+            <div>
+                <label>교환 대상 새 상품 (교환 시에만 입력, 비우면 동일 상품 교환)
+                    <select th:field="*{newProductId}">
+                        <option value="">선택 안 함</option>
+                        <option th:each="p : ${products}" th:value="${p.id}"
+                                th:text="${p.name} + ' (' + ${p.sku} + ')'"></option>
+                    </select>
+                </label>
+                <p th:if="${#fields.hasErrors('newProductId')}" th:errors="*{newProductId}"></p>
+            </div>
             <button type="submit">기록</button>
         </form>
     </main>

@@ -4,7 +4,8 @@ public enum MovementType {
 
     INBOUND("입고"),
     SALE("판매"),
-    RETURN("반품");
+    RETURN("반품"),
+    EXCHANGE("교환");
 
     private final String label;
 
