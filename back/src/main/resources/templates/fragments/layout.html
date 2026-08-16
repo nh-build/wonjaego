@@ -4,27 +4,96 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title th:text="${title} + ' - 원재고'">원재고</title>
+
+    <link rel="manifest" href="/manifest.json">
+    <meta name="theme-color" content="#AEDAF3">
+    <link rel="icon" href="/icons/icon-192.png">
+    <link rel="apple-touch-icon" href="/icons/icon-192.png">
+
+    <link rel="stylesheet" as="style" crossorigin
+          href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
+    <link href="https://cdn.jsdelivr.net/npm/daisyui@5" rel="stylesheet" type="text/css">
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+
+    <style>
+        [data-theme="wonjaego"] {
+            color-scheme: light;
+
+            --color-base-100: #F8FCFF;
+            --color-base-200: #E6F2FB;
+            --color-base-300: #D3E7F5;
+            --color-base-content: #33434F;
+
+            --color-primary: #AEDAF3;
+            --color-primary-content: #2F4353;
+
+            --color-secondary: #E6F2FB;
+            --color-secondary-content: #2F4353;
+
+            --color-accent: #7FB8DE;
+            --color-accent-content: #F8FCFF;
+
+            --color-neutral: #33434F;
+            --color-neutral-content: #F8FCFF;
+
+            --color-info: #6FB1E0;
+            --color-info-content: #1B2A33;
+
+            --color-success: #86D9B9;
+            --color-success-content: #123C2C;
+
+            --color-warning: #F5D98B;
+            --color-warning-content: #4A3707;
+
+            --color-error: #F3AEB0;
+            --color-error-content: #4A1113;
+
+            --radius-selector: 1rem;
+            --radius-field: 0.5rem;
+            --radius-box: 1rem;
+
+            --size-selector: 0.25rem;
+            --size-field: 0.25rem;
+
+            --border: 1px;
+            --depth: 1;
+            --noise: 0;
+        }
+
+        body {
+            font-family: 'Pretendard', system-ui, sans-serif;
+        }
+    </style>
+
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/sw.js');
+            });
+        }
+    </script>
 </head>
-<body>
-    <header th:fragment="header">
-        <h1><a href="/">원재고</a></h1>
-        <nav>
-            <a href="/">홈</a>
-            <span sec:authorize="isAuthenticated()">
-                <a href="/products">상품</a>
-                <a href="/channels">채널</a>
-                <a href="/me">내 정보</a>
-                <form th:action="@{/logout}" method="post" style="display:inline">
-                    <button type="submit">로그아웃</button>
+<body class="min-h-screen bg-base-100 text-base-content">
+    <header th:fragment="header" class="navbar bg-base-200 shadow-sm px-4">
+        <div class="flex-1">
+            <a href="/" class="btn btn-ghost text-xl">원재고</a>
+        </div>
+        <nav class="flex-none flex items-center gap-1">
+            <span sec:authorize="isAuthenticated()" class="flex items-center gap-1">
+                <a href="/products" class="btn btn-ghost btn-sm">상품</a>
+                <a href="/channels" class="btn btn-ghost btn-sm">채널</a>
+                <a href="/me" class="btn btn-ghost btn-sm">내 정보</a>
+                <form th:action="@{/logout}" method="post" class="inline">
+                    <button type="submit" class="btn btn-ghost btn-sm">로그아웃</button>
                 </form>
             </span>
-            <span sec:authorize="!isAuthenticated()">
-                <a href="/login">로그인</a>
-                <a href="/signup">회원가입</a>
+            <span sec:authorize="!isAuthenticated()" class="flex items-center gap-1">
+                <a href="/login" class="btn btn-ghost btn-sm">로그인</a>
+                <a href="/signup" class="btn btn-primary btn-sm">회원가입</a>
             </span>
         </nav>
     </header>
-    <footer th:fragment="footer">
+    <footer th:fragment="footer" class="footer footer-center p-4 text-base-content/60 text-sm">
         <p>&copy; 원재고</p>
     </footer>
 </body>

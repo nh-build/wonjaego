@@ -1,13 +1,17 @@
 <!DOCTYPE html>
-<html xmlns:th="http://www.thymeleaf.org">
+<html xmlns:th="http://www.thymeleaf.org" data-theme="wonjaego">
 <head th:replace="~{fragments/layout :: head('내 정보')}"></head>
 <body>
     <header th:replace="~{fragments/layout :: header}"></header>
 
-    <main>
-        <h2>내 정보</h2>
-        <p>아이디: <span th:text="${member.username}"></span></p>
-        <p>상호명: <span th:text="${member.businessName}"></span></p>
+    <main class="flex justify-center px-4 py-12">
+        <div class="card w-full max-w-sm bg-base-200 shadow-sm">
+            <div class="card-body gap-3">
+                <h2 class="card-title justify-center">내 정보</h2>
+                <p><span class="font-medium">아이디:</span> <span th:text="${member.username}"></span></p>
+                <p><span class="font-medium">상호명:</span> <span th:text="${member.businessName}"></span></p>
+            </div>
+        </div>
     </main>
 
     <footer th:replace="~{fragments/layout :: footer}"></footer>
