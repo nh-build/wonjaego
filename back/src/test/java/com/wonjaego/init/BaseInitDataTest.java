@@ -15,8 +15,11 @@ import com.wonjaego.member.MemberService;
 import com.wonjaego.movement.MovementService;
 import com.wonjaego.product.ProductRepository;
 import com.wonjaego.product.ProductService;
+import com.wonjaego.product.ProductVariant;
+import com.wonjaego.product.ProductVariantRepository;
 import com.wonjaego.product.ProductVariantService;
 import jakarta.servlet.http.HttpSession;
+import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.NoSuchBeanDefinitionException;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -64,6 +67,9 @@ class BaseInitDataTest {
     @Autowired
     private ProductRepository productRepository;
 
+    @Autowired
+    private ProductVariantRepository productVariantRepository;
+
     // @Profile("dev") means the bean is never registered under the test profile — construct
     // and invoke run() directly to exercise its seeding logic against the isolated test H2.
     // This is a plain `new`, not the Spring-managed proxy, so BaseInitData's own @Transactional
@@ -83,6 +89,14 @@ class BaseInitDataTest {
                 .andReturn();
         HttpSession session = result.getRequest().getSession(false);
         return (MockHttpSession) session;
+    }
+
+    private Long productIdByName(String name) {
+        return productRepository.findAll().stream()
+                .filter(p -> p.getName().equals(name))
+                .findFirst()
+                .orElseThrow()
+                .getId();
     }
 
     @Test
@@ -105,11 +119,17 @@ class BaseInitDataTest {
 
         MockHttpSession session = loginAsSampleMember();
 
-        // 블랙/S 변형은 20(입고) - 15(판매) = 5, 기본 품절임박 기준(5) 이하라 대시보드에 뜬다.
+        // 변형 개수: 티셔츠 4개(블랙/화이트 × S/M) + 가방 1개 = 5개.
+        // 총재고 합계: 블랙/S 5(입고 20 - 판매 15) + 가방 9(입고 8 + 반품 1) = 14.
+        // 블랙/S 변형은 명시적으로 채워진 품절임박 기준(6) 이하라 대시보드에 뜬다.
+        // SKU("TSHIRT-BLACK-S")와 커스텀 기준(6)이 채워진 변형이기도 하다.
         mockMvc.perform(get("/").session(session))
                 .andExpect(status().isOk())
+                .andExpect(content().string(containsString("상품 수: 5")))
+                .andExpect(content().string(containsString("총재고 합계: 14")))
                 .andExpect(content().string(containsString("베이직 반팔 티셔츠")))
-                .andExpect(content().string(containsString("블랙 / S")));
+                .andExpect(content().string(containsString("블랙 / S")))
+                .andExpect(content().string(containsString("TSHIRT-BLACK-S")));
 
         mockMvc.perform(get("/products").session(session))
                 .andExpect(status().isOk())
@@ -122,16 +142,54 @@ class BaseInitDataTest {
                 .andExpect(content().string(containsString("에이블리")))
                 .andExpect(content().string(containsString("지그재그")));
 
-        Long tshirtId = productRepository.findAll().stream()
-                .filter(p -> p.getName().equals("베이직 반팔 티셔츠"))
-                .findFirst()
-                .orElseThrow()
-                .getId();
+        Long tshirtId = productIdByName("베이직 반팔 티셔츠");
 
+        // 옵션이 있는 상품(티셔츠, 색상×사이즈 조합)의 상세 화면: 변형 목록에 SKU·기준이 보이고,
+        // Movement 이력에 입고/판매가 함께 보인다.
         mockMvc.perform(get("/products/" + tshirtId).session(session))
                 .andExpect(status().isOk())
                 .andExpect(content().string(containsString("입고")))
                 .andExpect(content().string(containsString("판매")))
-                .andExpect(content().string(containsString("블랙 / S")));
+                .andExpect(content().string(containsString("블랙 / S")))
+                .andExpect(content().string(containsString("TSHIRT-BLACK-S")));
+
+        Long bagId = productIdByName("레더 크로스백");
+
+        // 옵션이 없는 상품(가방, 단일 변형)의 상세 화면: 입고/반품/교환 이력이 모두 보인다.
+        mockMvc.perform(get("/products/" + bagId).session(session))
+                .andExpect(status().isOk())
+                .andExpect(content().string(containsString("입고")))
+                .andExpect(content().string(containsString("반품")))
+                .andExpect(content().string(containsString("교환")));
+    }
+
+    @Test
+    void 생성된_변형의_최종_재고는_기록된_Movement와_앞뒤가_맞는다() {
+        baseInitData().run(new DefaultApplicationArguments());
+
+        Long tshirtId = productIdByName("베이직 반팔 티셔츠");
+        List<ProductVariant> tshirtVariants = productVariantRepository.findAllByProductIdWithOptions(tshirtId);
+
+        assertThat(tshirtVariants).hasSize(4);
+        ProductVariant blackSmall = tshirtVariants.stream()
+                .filter(v -> v.getOptionLabel().equals("블랙 / S"))
+                .findFirst()
+                .orElseThrow();
+        // 20(입고) - 15(판매) = 5
+        assertThat(blackSmall.getStockQuantity()).isEqualTo(5);
+        assertThat(blackSmall.getSku()).isEqualTo("TSHIRT-BLACK-S");
+        assertThat(blackSmall.getLowStockThreshold()).isEqualTo(6);
+        assertThat(blackSmall.isLowStock()).isTrue();
+        // 나머지 세 조합은 재고 이동이 없어 0으로 남는다.
+        assertThat(tshirtVariants).filteredOn(v -> !v.getOptionLabel().equals("블랙 / S"))
+                .extracting(ProductVariant::getStockQuantity)
+                .containsOnly(0);
+
+        Long bagId = productIdByName("레더 크로스백");
+        List<ProductVariant> bagVariants = productVariantRepository.findAllByProductIdWithOptions(bagId);
+
+        assertThat(bagVariants).hasSize(1);
+        // 8(입고) + 1(반품) + 0(동일 변형 교환) = 9
+        assertThat(bagVariants.get(0).getStockQuantity()).isEqualTo(9);
     }
 }

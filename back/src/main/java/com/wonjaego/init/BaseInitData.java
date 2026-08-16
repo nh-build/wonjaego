@@ -12,6 +12,7 @@ import com.wonjaego.product.Product;
 import com.wonjaego.product.ProductCreateForm;
 import com.wonjaego.product.ProductService;
 import com.wonjaego.product.ProductVariant;
+import com.wonjaego.product.ProductVariantEditForm;
 import com.wonjaego.product.ProductVariantService;
 import java.math.BigDecimal;
 import java.util.List;
@@ -61,6 +62,11 @@ public class BaseInitData implements ApplicationRunner {
         movementService.record(memberId, blackSmall.getId(), smartstore.getId(), MovementType.INBOUND, 20, "초기 입고");
         movementService.record(memberId, blackSmall.getId(), smartstore.getId(), MovementType.SALE, 15, "스마트스토어 판매");
 
+        // Stock ends at 5, at/under this explicit threshold of 6 — shows up in the
+        // dashboard's low-stock list, and also demonstrates a variant with its SKU and
+        // threshold filled in (vs. every other seeded variant, left at their defaults).
+        productVariantService.update(memberId, blackSmall.getId(), variantEditForm("TSHIRT-BLACK-S", 6));
+
         movementService.record(memberId, bagVariant.getId(), ably.getId(), MovementType.INBOUND, 8, "초기 입고");
         movementService.record(memberId, bagVariant.getId(), ably.getId(), MovementType.RETURN, 1, "고객 반품");
 
@@ -72,6 +78,13 @@ public class BaseInitData implements ApplicationRunner {
     private SalesChannelForm channelForm(String name) {
         SalesChannelForm form = new SalesChannelForm();
         form.setName(name);
+        return form;
+    }
+
+    private ProductVariantEditForm variantEditForm(String sku, Integer lowStockThreshold) {
+        ProductVariantEditForm form = new ProductVariantEditForm();
+        form.setSku(sku);
+        form.setLowStockThreshold(lowStockThreshold);
         return form;
     }
 
