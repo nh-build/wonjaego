@@ -29,6 +29,10 @@ public class Product extends BaseEntity {
     @Column(nullable = false, precision = 12, scale = 2)
     private BigDecimal price;
 
+    // Opaque key issued by FileStorage — never a filesystem path, so this stays valid
+    // regardless of which FileStorage implementation is in use.
+    private String photoKey;
+
     public Product(Member member, String name, BigDecimal price) {
         this.member = member;
         this.name = name;
@@ -38,5 +42,9 @@ public class Product extends BaseEntity {
     public void updateInfo(String name, BigDecimal price) {
         this.name = name;
         this.price = price;
+    }
+
+    public void updatePhotoKey(String photoKey) {
+        this.photoKey = photoKey;
     }
 }

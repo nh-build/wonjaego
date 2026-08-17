@@ -6,9 +6,17 @@
 
     <main class="flex-1 container mx-auto max-w-screen-md px-4 py-8">
         <div class="flex items-start justify-between mb-2">
-            <div>
-                <h2 class="text-2xl font-bold" th:text="${product.name}"></h2>
-                <p class="text-base-content/60">가격: <span th:text="${product.price}"></span></p>
+            <div class="flex items-start gap-4">
+                <img th:if="${product.photoKey != null}" th:src="@{'/products/' + ${product.id} + '/photo'}"
+                     class="w-24 h-24 object-cover rounded-box" alt="">
+                <div th:unless="${product.photoKey != null}"
+                     class="w-24 h-24 rounded-box bg-base-300 flex items-center justify-center text-base-content/40 text-sm shrink-0">
+                    사진 없음
+                </div>
+                <div>
+                    <h2 class="text-2xl font-bold" th:text="${product.name}"></h2>
+                    <p class="text-base-content/60">가격: <span th:text="${product.price}"></span></p>
+                </div>
             </div>
             <div class="flex gap-2">
                 <a th:href="@{'/products/' + ${product.id} + '/edit'}" class="btn btn-ghost btn-sm">상품 수정</a>

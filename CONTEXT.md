@@ -24,6 +24,10 @@ _Avoid_: 옵션 항목
 실제 재고 단위. Product 하나와 그 Product에 속한 각 OptionGroup에서 고른 OptionValue 조합(0개 이상)으로 식별된다. sku(nullable), 총재고, 품절임박 기준을 갖는다. 등록 시 각 OptionGroup의 값들을 모두 조합(카티전 곱)해 자동 생성되며, 옵션이 0개인 Product는 조합도 없는 ProductVariant 1개(상품 자체)를 갖는다. 생성 직후에는 재고 0·SKU 없음 상태이며, SKU가 없어도 Movement를 기록할 수 있다.
 _Avoid_: SKU(단독으로는 ProductVariant의 필드를 가리킬 때만 사용), 옵션 조합(설명용으로만 사용, 엔티티명은 ProductVariant)
 
+**상품 사진** (Product Photo):
+Product 하나에 선택적으로 붙일 수 있는 사진 한 장. 등록/수정 화면에서 업로드하며, 상품 목록·상세에 썸네일로 표시된다. 로그인한 소유자만 조회할 수 있다.
+_Avoid_: 이미지(설명용으로만 사용), 썸네일(표시 방식일 뿐 별도 개념 아님)
+
 **SalesChannel** (판매채널):
 셀러가 ProductVariant를 판매하는 외부 플랫폼(스마트스토어, 에이블리, 지그재그 등). 고정 목록이 아니라 셀러가 직접 등록/관리하는 엔티티다.
 _Avoid_: 플랫폼, 마켓

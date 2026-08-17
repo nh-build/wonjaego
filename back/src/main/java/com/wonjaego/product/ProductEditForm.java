@@ -5,6 +5,7 @@ import jakarta.validation.constraints.NotNull;
 import java.math.BigDecimal;
 import lombok.Getter;
 import lombok.Setter;
+import org.springframework.web.multipart.MultipartFile;
 
 @Getter
 @Setter
@@ -15,6 +16,9 @@ public class ProductEditForm {
 
     @NotNull
     private BigDecimal price;
+
+    // Optional — submitting without a file keeps the product's existing photo untouched.
+    private MultipartFile photo;
 
     public static ProductEditForm from(Product product) {
         ProductEditForm form = new ProductEditForm();

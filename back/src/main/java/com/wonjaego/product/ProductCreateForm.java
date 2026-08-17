@@ -7,6 +7,7 @@ import java.util.ArrayList;
 import java.util.List;
 import lombok.Getter;
 import lombok.Setter;
+import org.springframework.web.multipart.MultipartFile;
 
 @Getter
 @Setter
@@ -17,6 +18,10 @@ public class ProductCreateForm {
 
     @NotNull
     private BigDecimal price;
+
+    // Optional — left null on a plain (non-multipart) submission and on a multipart one
+    // where the user didn't pick a file.
+    private MultipartFile photo;
 
     // Pre-populated with empty slots (rather than left empty) so the registration form can
     // render a fixed number of th:field-bound rows — Thymeleaf/Spring read indexed nested

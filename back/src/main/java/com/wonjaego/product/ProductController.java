@@ -2,8 +2,13 @@ package com.wonjaego.product;
 
 import com.wonjaego.member.MemberPrincipal;
 import com.wonjaego.movement.MovementService;
+import com.wonjaego.storage.FileStorage;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.core.io.Resource;
+import org.springframework.http.MediaType;
+import org.springframework.http.MediaTypeFactory;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -20,6 +25,7 @@ public class ProductController {
     private final ProductService productService;
     private final ProductVariantService productVariantService;
     private final MovementService movementService;
+    private final FileStorage fileStorage;
 
     @GetMapping("/products")
     public String list(@AuthenticationPrincipal MemberPrincipal principal, Model model) {
@@ -35,8 +41,12 @@ public class ProductController {
                           BindingResult bindingResult,
                           Model model) {
         if (!bindingResult.hasErrors()) {
-            productService.create(principal.getMemberId(), form);
-            return "redirect:/products";
+            try {
+                productService.create(principal.getMemberId(), form);
+                return "redirect:/products";
+            } catch (InvalidPhotoException e) {
+                bindingResult.rejectValue("photo", "invalid", e.getMessage());
+            }
         }
         model.addAttribute("products", productService.listOwned(principal.getMemberId()));
         model.addAttribute("maxOptionGroups", ProductCreateForm.MAX_OPTION_GROUPS);
@@ -51,11 +61,23 @@ public class ProductController {
         return "products/detail";
     }
 
+    @GetMapping("/products/{id}/photo")
+    public ResponseEntity<Resource> photo(@AuthenticationPrincipal MemberPrincipal principal, @PathVariable Long id) {
+        Product product = productService.getOwned(principal.getMemberId(), id);
+        String photoKey = product.getPhotoKey();
+        if (photoKey == null) {
+            throw new ProductPhotoNotFoundException(id);
+        }
+        MediaType mediaType = MediaTypeFactory.getMediaType(photoKey).orElse(MediaType.APPLICATION_OCTET_STREAM);
+        return ResponseEntity.ok().contentType(mediaType).body(fileStorage.load(photoKey));
+    }
+
     @GetMapping("/products/{id}/edit")
     public String editForm(@AuthenticationPrincipal MemberPrincipal principal, @PathVariable Long id, Model model) {
         Product product = productService.getOwned(principal.getMemberId(), id);
         model.addAttribute("form", ProductEditForm.from(product));
         model.addAttribute("productId", id);
+        model.addAttribute("hasPhoto", product.getPhotoKey() != null);
         return "products/edit";
     }
 
@@ -67,12 +89,17 @@ public class ProductController {
                         Model model) {
         // Ownership must 404 regardless of validation outcome — checked unconditionally
         // before branching on bindingResult, not just as a side effect of update() below.
-        productService.getOwned(principal.getMemberId(), id);
+        Product product = productService.getOwned(principal.getMemberId(), id);
         if (!bindingResult.hasErrors()) {
-            productService.update(principal.getMemberId(), id, form);
-            return "redirect:/products/" + id;
+            try {
+                productService.update(principal.getMemberId(), id, form);
+                return "redirect:/products/" + id;
+            } catch (InvalidPhotoException e) {
+                bindingResult.rejectValue("photo", "invalid", e.getMessage());
+            }
         }
         model.addAttribute("productId", id);
+        model.addAttribute("hasPhoto", product.getPhotoKey() != null);
         return "products/edit";
     }
 
