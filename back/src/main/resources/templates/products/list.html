@@ -36,13 +36,19 @@
                         <fieldset class="fieldset border border-base-300 rounded-box p-4">
                             <legend class="fieldset-legend px-2">옵션 그룹 (선택, 최대 5개)</legend>
                             <p class="text-sm text-base-content/60 mb-3">값은 콤마로 구분해 입력하세요. 예: 블랙, 화이트</p>
-                            <div th:each="i : ${#numbers.sequence(0, maxOptionGroups - 1)}"
-                                 class="grid grid-cols-1 sm:grid-cols-2 gap-2 mb-2">
-                                <input type="text" th:field="*{optionGroups[__${i}__].name}"
-                                       placeholder="예: 색상" class="input input-bordered input-sm w-full">
-                                <input type="text" th:field="*{optionGroups[__${i}__].valuesText}"
-                                       placeholder="예: 블랙, 화이트" class="input input-bordered input-sm w-full">
+                            <div id="option-rows">
+                                <div th:each="i : ${#numbers.sequence(0, maxOptionGroups - 1)}"
+                                     th:classappend="${i} > 0 ? 'hidden' : ''"
+                                     class="option-row flex gap-2 mb-2">
+                                    <input type="text" th:field="*{optionGroups[__${i}__].name}"
+                                           placeholder="예: 색상" class="input input-bordered input-sm flex-1 min-w-0">
+                                    <input type="text" th:field="*{optionGroups[__${i}__].valuesText}"
+                                           placeholder="예: 블랙, 화이트" class="input input-bordered input-sm flex-1 min-w-0">
+                                    <button type="button" class="btn btn-ghost btn-sm btn-square shrink-0 option-row-remove"
+                                            aria-label="옵션 줄 지우기">✕</button>
+                                </div>
                             </div>
+                            <button type="button" id="option-add-button" class="btn btn-outline btn-sm mt-1">+ 옵션 추가</button>
                         </fieldset>
 
                         <button type="submit" class="btn btn-primary mt-2">등록</button>
@@ -95,5 +101,54 @@
     </main>
 
     <footer th:replace="~{fragments/layout :: footer}"></footer>
+
+    <script th:inline="none">
+        (function () {
+            var rows = Array.prototype.slice.call(document.querySelectorAll('#option-rows .option-row'));
+            var addButton = document.getElementById('option-add-button');
+            if (!addButton || rows.length === 0) {
+                return;
+            }
+
+            function firstHiddenRow() {
+                for (var i = 0; i < rows.length; i++) {
+                    if (rows[i].classList.contains('hidden')) {
+                        return rows[i];
+                    }
+                }
+                return null;
+            }
+
+            function updateAddButtonState() {
+                addButton.disabled = firstHiddenRow() === null;
+            }
+
+            addButton.addEventListener('click', function () {
+                var row = firstHiddenRow();
+                if (row) {
+                    row.classList.remove('hidden');
+                }
+                updateAddButtonState();
+            });
+
+            rows.forEach(function (row, index) {
+                var removeButton = row.querySelector('.option-row-remove');
+                var inputs = row.querySelectorAll('input');
+                removeButton.addEventListener('click', function () {
+                    inputs.forEach(function (input) {
+                        input.value = '';
+                    });
+                    // The first row always stays visible — it's the only guaranteed-present
+                    // slot; the rest go back into the pool "+" can reveal again.
+                    if (index > 0) {
+                        row.classList.add('hidden');
+                    }
+                    updateAddButtonState();
+                });
+            });
+
+            updateAddButtonState();
+        })();
+    </script>
 </body>
 </html>
