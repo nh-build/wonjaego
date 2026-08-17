@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>원재고</title>
+    <link rel="manifest" href="/manifest.json">
+    <meta name="theme-color" content="#FEF7F6">
+    <link rel="icon" href="/icons/icon-192.png">
+    <script>
+        // Runs synchronously in <head>, before the body is painted — a repeat visit
+        // within the same session bounces straight to "/" instead of flashing the splash.
+        if (sessionStorage.getItem('wonjaego-splash-seen')) {
+            location.replace('/');
+        }
+    </script>
+    <style>
+        html, body {
+            margin: 0;
+            padding: 0;
+            height: 100%;
+            background: #FEF7F6;
+        }
+
+        .splash {
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 24px;
+            cursor: pointer;
+        }
+
+        .splash img {
+            width: 320px;
+            height: auto;
+        }
+
+        .tagline {
+            margin: 0;
+            font-family: Georgia, 'Times New Roman', serif;
+            font-size: 1.5rem;
+            color: #2B2B2B;
+            letter-spacing: 0.05em;
+            white-space: pre;
+        }
+
+        .cursor {
+            animation: blink 0.8s step-end infinite;
+        }
+
+        @keyframes blink {
+            0%, 50% { opacity: 1; }
+            50.01%, 100% { opacity: 0; }
+        }
+    </style>
+</head>
+<body>
+    <div class="splash" id="splash">
+        <img src="/images/logo.png" alt="원재고">
+        <p class="tagline"><span id="typed"></span><span class="cursor">|</span></p>
+    </div>
+    <script>
+        (function () {
+            var TEXT = 'All your stock, in ONE';
+            var TYPE_INTERVAL_MS = 70;
+            var HOLD_AFTER_TYPE_MS = 1500;
+            var typedEl = document.getElementById('typed');
+            var navigated = false;
+
+            function goToDashboard() {
+                if (navigated) {
+                    return;
+                }
+                navigated = true;
+                sessionStorage.setItem('wonjaego-splash-seen', '1');
+                window.location.href = '/';
+            }
+
+            var index = 0;
+            var typeTimer = setInterval(function () {
+                index += 1;
+                typedEl.textContent = TEXT.slice(0, index);
+                if (index >= TEXT.length) {
+                    clearInterval(typeTimer);
+                    setTimeout(goToDashboard, HOLD_AFTER_TYPE_MS);
+                }
+            }, TYPE_INTERVAL_MS);
+
+            document.addEventListener('click', goToDashboard);
+            document.addEventListener('keydown', goToDashboard);
+        })();
+    </script>
+</body>
+</html>

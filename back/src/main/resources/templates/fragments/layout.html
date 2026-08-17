@@ -21,7 +21,7 @@
         [data-theme="wonjaego"] {
             color-scheme: light;
 
-            --color-base-100: #F8FCFF;
+            --color-base-100: #FEF7F6;
             --color-base-200: #E6F2FB;
             --color-base-300: #D3E7F5;
             --color-base-content: #33434F;
@@ -78,7 +78,9 @@
 <body class="min-h-screen flex flex-col bg-base-100 text-base-content">
     <header th:fragment="header" class="navbar bg-base-200 shadow-sm px-4 md:px-8">
         <div class="flex-1">
-            <a href="/" class="btn btn-ghost text-xl font-bold">원재고</a>
+            <a href="/" class="flex items-center">
+                <img src="/topLogo.png" alt="원재고" class="h-8 w-auto">
+            </a>
         </div>
         <nav class="flex-none flex items-center gap-1">
             <span sec:authorize="isAuthenticated()" class="flex items-center gap-1">

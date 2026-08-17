@@ -1,7 +1,7 @@
 {
   "name": "원재고",
   "short_name": "원재고",
-  "start_url": "/",
+  "start_url": "/splash",
   "display": "standalone",
   "background_color": "#F8FCFF",
   "theme_color": "#AEDAF3",

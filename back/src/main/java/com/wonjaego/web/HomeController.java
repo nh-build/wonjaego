@@ -16,6 +16,11 @@ public class HomeController {
 
     private final ProductVariantService productVariantService;
 
+    @GetMapping("/splash")
+    public String splash() {
+        return "splash";
+    }
+
     @GetMapping("/")
     public String home(@AuthenticationPrincipal MemberPrincipal principal, Model model) {
         if (principal == null) {
