@@ -20,7 +20,7 @@ public class SecurityConfig {
     @Bean
     SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http.authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/", "/splash", "/signup", "/login", "/h2-console/**",
+                        .requestMatchers("/", "/splash", "/signup", "/login",
                                 "/manifest.json", "/sw.js", "/icons/**", "/images/**",
                                 "/logo.png", "/topLogo.png").permitAll()
                         .anyRequest().authenticated())
@@ -31,9 +31,7 @@ public class SecurityConfig {
                 .logout(logout -> logout
                         .logoutUrl("/logout")
                         .logoutSuccessUrl("/login?logout")
-                        .permitAll())
-                .csrf(csrf -> csrf.ignoringRequestMatchers("/h2-console/**"))
-                .headers(headers -> headers.frameOptions(frame -> frame.sameOrigin()));
+                        .permitAll());
         return http.build();
     }
 }
