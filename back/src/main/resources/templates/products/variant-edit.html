@@ -2,7 +2,7 @@
 <html xmlns:th="http://www.thymeleaf.org" data-theme="wonjaego">
 <head th:replace="~{fragments/layout :: head('변형 수정')}"></head>
 <body>
-    <header th:replace="~{fragments/layout :: header}"></header>
+    <header th:replace="~{fragments/layout :: appbar('변형 수정', '/products/' + ${productId})}"></header>
 
     <main class="flex-1 container mx-auto max-w-screen-md px-4 py-16 flex justify-center">
         <div class="card w-full max-w-sm bg-base-200 shadow-sm">

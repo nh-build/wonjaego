@@ -76,26 +76,36 @@
     </script>
 </head>
 <body class="min-h-screen flex flex-col bg-base-100 text-base-content">
-    <header th:fragment="header" class="navbar bg-base-200 shadow-sm px-4 md:px-8">
-        <div class="flex-1">
-            <a href="/" class="flex items-center">
-                <img src="/topLogo.png" alt="원재고" class="h-8 w-auto">
-            </a>
+    <header th:fragment="appbar(title, backHref)" class="flex items-center px-4 py-4 max-w-screen-md mx-auto">
+        <a th:href="@{${backHref}}" class="btn btn-ghost btn-circle" aria-label="뒤로가기">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                 stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="15 18 9 12 15 6"></polyline>
+            </svg>
+        </a>
+        <h1 class="flex-1 text-center text-lg font-bold" th:text="${title}"></h1>
+        <div class="dropdown dropdown-end">
+            <div tabindex="0" role="button" class="btn btn-ghost btn-circle" aria-label="메뉴">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+                    <line x1="3" y1="6" x2="21" y2="6"></line>
+                    <line x1="3" y1="12" x2="21" y2="12"></line>
+                    <line x1="3" y1="18" x2="21" y2="18"></line>
+                </svg>
+            </div>
+            <ul tabindex="0" class="dropdown-content menu bg-base-100 rounded-box shadow-sm w-40 p-2 z-10">
+                <li sec:authorize="isAuthenticated()"><a href="/">홈</a></li>
+                <li sec:authorize="isAuthenticated()"><a href="/products">상품</a></li>
+                <li sec:authorize="isAuthenticated()"><a href="/channels">채널</a></li>
+                <li sec:authorize="isAuthenticated()"><a href="/me">내 정보</a></li>
+                <li sec:authorize="isAuthenticated()">
+                    <form th:action="@{/logout}" method="post">
+                        <button type="submit" class="w-full text-left">로그아웃</button>
+                    </form>
+                </li>
+                <li sec:authorize="!isAuthenticated()"><a href="/login">로그인</a></li>
+                <li sec:authorize="!isAuthenticated()"><a href="/signup">회원가입</a></li>
+            </ul>
         </div>
-        <nav class="flex-none flex items-center gap-1">
-            <span sec:authorize="isAuthenticated()" class="flex items-center gap-1">
-                <a href="/products" class="btn btn-ghost btn-sm">상품</a>
-                <a href="/channels" class="btn btn-ghost btn-sm">채널</a>
-                <a href="/me" class="btn btn-ghost btn-sm">내 정보</a>
-                <form th:action="@{/logout}" method="post" class="inline">
-                    <button type="submit" class="btn btn-ghost btn-sm">로그아웃</button>
-                </form>
-            </span>
-            <span sec:authorize="!isAuthenticated()" class="flex items-center gap-1">
-                <a href="/login" class="btn btn-ghost btn-sm">로그인</a>
-                <a href="/signup" class="btn btn-primary btn-sm">회원가입</a>
-            </span>
-        </nav>
     </header>
     <footer th:fragment="footer" class="footer footer-center mt-auto p-6 text-base-content/60 text-sm">
         <p>&copy; 원재고</p>

@@ -2,7 +2,7 @@
 <html xmlns:th="http://www.thymeleaf.org" data-theme="wonjaego">
 <head th:replace="~{fragments/layout :: head('상품 수정')}"></head>
 <body>
-    <header th:replace="~{fragments/layout :: header}"></header>
+    <header th:replace="~{fragments/layout :: appbar('상품 수정', '/products/' + ${productId})}"></header>
 
     <main class="flex-1 container mx-auto max-w-screen-md px-4 py-16 flex justify-center">
         <div class="card w-full max-w-sm bg-base-200 shadow-sm">
@@ -25,7 +25,7 @@
                     </div>
                     <div class="flex flex-col gap-1">
                         <label class="label" for="photo" th:text="${hasPhoto} ? '새 사진으로 교체 (선택)' : '사진 (선택)'"></label>
-                        <input id="photo" type="file" th:field="*{photo}" accept="image/*" capture="environment"
+                        <input id="photo" type="file" th:field="*{photo}" accept="image/*"
                                class="file-input file-input-bordered w-full">
                         <span class="text-error text-sm" th:if="${#fields.hasErrors('photo')}" th:errors="*{photo}"></span>
                     </div>

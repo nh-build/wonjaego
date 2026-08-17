@@ -22,7 +22,7 @@ public class SecurityConfig {
         http.authorizeHttpRequests(auth -> auth
                         .requestMatchers("/", "/splash", "/signup", "/login",
                                 "/manifest.json", "/sw.js", "/icons/**", "/images/**",
-                                "/logo.png", "/topLogo.png").permitAll()
+                                "/logo.png").permitAll()
                         .anyRequest().authenticated())
                 .formLogin(form -> form
                         .loginPage("/login")

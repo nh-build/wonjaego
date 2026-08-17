@@ -2,11 +2,9 @@
 <html xmlns:th="http://www.thymeleaf.org" data-theme="wonjaego">
 <head th:replace="~{fragments/layout :: head('상품 관리')}"></head>
 <body>
-    <header th:replace="~{fragments/layout :: header}"></header>
+    <header th:replace="~{fragments/layout :: appbar('상품 등록', '/')}"></header>
 
-    <main class="flex-1 container mx-auto max-w-screen-md px-4 py-8">
-        <h2 class="text-2xl font-bold mb-6">상품 관리</h2>
-
+    <main class="flex-1 container mx-auto max-w-screen-md px-4 pb-8">
         <div th:if="${error}" class="alert alert-error mb-6">
             <span th:text="${error}"></span>
         </div>
@@ -20,7 +18,7 @@
                             <label class="label" for="photo">상품 사진 (선택)</label>
                             <label for="photo"
                                    class="w-24 h-24 rounded-2xl border-2 border-dashed border-primary/50 bg-primary/10 flex flex-col items-center justify-center gap-1 cursor-pointer overflow-hidden">
-                                <input id="photo" type="file" th:field="*{photo}" accept="image/*" capture="environment" class="hidden">
+                                <input id="photo" type="file" th:field="*{photo}" accept="image/*" class="hidden">
                                 <img id="photo-preview-img" class="hidden w-full h-full object-cover" alt="">
                                 <span id="photo-tile-placeholder" class="flex flex-col items-center gap-1 text-base-content/50">
                                     <span class="text-2xl leading-none">＋</span>
