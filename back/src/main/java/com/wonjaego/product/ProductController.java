@@ -83,14 +83,12 @@ public class ProductController {
     // anyRequest().authenticated(), so no @AuthenticationPrincipal parameter is needed.
     @PostMapping("/products/name-suggestions")
     @ResponseBody
-    public List<NameSuggestionResponse> suggestNames(@RequestBody NameSuggestionRequest request) {
+    public List<String> suggestNames(@RequestBody NameSuggestionRequest request) {
         List<String> keywords = parseKeywords(request.keywords());
         if (keywords.isEmpty()) {
-            throw new InvalidNameSuggestionRequestException("키워드를 입력해주세요.");
+            throw new InvalidNameSuggestionRequestException("포인트 단어를 입력해주세요.");
         }
-        return nameSuggestionClient.suggest(keywords).stream()
-                .map(NameSuggestionResponse::from)
-                .toList();
+        return nameSuggestionClient.suggest(keywords, request.mood());
     }
 
     private List<String> parseKeywords(String rawKeywords) {

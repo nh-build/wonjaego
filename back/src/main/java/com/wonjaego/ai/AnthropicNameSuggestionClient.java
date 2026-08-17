@@ -16,11 +16,12 @@ import org.springframework.web.client.RestClientException;
 @Component
 public class AnthropicNameSuggestionClient implements NameSuggestionClient {
 
+    private static final int SUGGESTION_COUNT = 5;
     private static final String MODEL = "claude-haiku-4-5-20251001";
     private static final String ANTHROPIC_VERSION = "2023-06-01";
     private static final String TOOL_NAME = "suggest_product_names";
     private static final String TOOL_DESCRIPTION =
-            "주어진 키워드를 참고해 온라인 쇼핑몰 상품명을 컨셉별로 하나씩 제안한다.";
+            "주어진 포인트 단어를 조합해 온라인 쇼핑몰 상품명 후보를 " + SUGGESTION_COUNT + "개 제안한다.";
     private static final Map<String, Object> INPUT_SCHEMA = buildInputSchema();
 
     private final RestClient restClient;
@@ -35,13 +36,13 @@ public class AnthropicNameSuggestionClient implements NameSuggestionClient {
     }
 
     @Override
-    public List<NameSuggestion> suggest(List<String> keywords) {
+    public List<String> suggest(List<String> keywords, String mood) {
         AnthropicMessageRequest request = new AnthropicMessageRequest(
                 MODEL,
                 512,
                 List.of(new AnthropicMessageRequest.AnthropicTool(TOOL_NAME, TOOL_DESCRIPTION, INPUT_SCHEMA)),
                 new AnthropicMessageRequest.AnthropicToolChoice("tool", TOOL_NAME),
-                List.of(new AnthropicMessageRequest.AnthropicMessage("user", buildPrompt(keywords))));
+                List.of(new AnthropicMessageRequest.AnthropicMessage("user", buildPrompt(keywords, mood))));
 
         AnthropicMessageResponse response;
         try {
@@ -51,23 +52,28 @@ public class AnthropicNameSuggestionClient implements NameSuggestionClient {
                     .retrieve()
                     .body(AnthropicMessageResponse.class);
         } catch (RestClientException e) {
-            log.warn("Claude API 호출 실패. keywords={}", keywords, e);
+            log.warn("Claude API 호출 실패. keywords={}, mood={}", keywords, mood, e);
             throw new NameSuggestionFailedException("Claude API 호출에 실패했습니다.", e);
         }
 
-        return parse(response, keywords);
+        return parse(response, keywords, mood);
     }
 
-    private String buildPrompt(List<String> keywords) {
-        return "다음 키워드를 참고해서 온라인 쇼핑몰에 올릴 상품명 후보를 만들어줘. 키워드: "
-                + String.join(", ", keywords)
-                + ". 반드시 " + TOOL_NAME + " 도구를 사용해서 심플(simple), 러블리(lovely), 섹시(sexy), 캐주얼(casual) "
-                + "4가지 분위기로 각각 상품명을 하나씩 지어줘. 각 이름은 15자 이내의 자연스러운 한국어 상품명이어야 해.";
+    private String buildPrompt(List<String> keywords, String mood) {
+        StringBuilder prompt = new StringBuilder("다음 포인트 단어를 참고해서 온라인 쇼핑몰에 올릴 상품명 후보를 만들어줘. 포인트 단어: ")
+                .append(String.join(", ", keywords))
+                .append(".");
+        if (mood != null && !mood.isBlank()) {
+            prompt.append(" 원하는 컨셉/무드: ").append(mood.trim()).append(".");
+        }
+        prompt.append(" 반드시 ").append(TOOL_NAME).append(" 도구를 사용해서 서로 다른 상품명 후보를 ")
+                .append(SUGGESTION_COUNT).append("개 지어줘. 각 이름은 15자 이내의 자연스러운 한국어 상품명이어야 해.");
+        return prompt.toString();
     }
 
-    private List<NameSuggestion> parse(AnthropicMessageResponse response, List<String> keywords) {
+    private List<String> parse(AnthropicMessageResponse response, List<String> keywords, String mood) {
         if (response == null || response.content() == null) {
-            log.warn("Claude API로부터 빈 응답을 받았습니다. keywords={}", keywords);
+            log.warn("Claude API로부터 빈 응답을 받았습니다. keywords={}, mood={}", keywords, mood);
             throw new NameSuggestionFailedException("Claude API로부터 빈 응답을 받았습니다.");
         }
 
@@ -76,36 +82,41 @@ public class AnthropicNameSuggestionClient implements NameSuggestionClient {
                 .map(AnthropicMessageResponse.ContentBlock::input)
                 .findFirst()
                 .orElseThrow(() -> {
-                    log.warn("Claude API 응답에서 도구 호출 결과를 찾을 수 없습니다. keywords={}", keywords);
+                    log.warn("Claude API 응답에서 도구 호출 결과를 찾을 수 없습니다. keywords={}, mood={}", keywords, mood);
                     return new NameSuggestionFailedException("Claude API 응답에서 도구 호출 결과를 찾을 수 없습니다.");
                 });
 
-        List<NameSuggestion> suggestions = new ArrayList<>();
-        for (NamingConcept concept : NamingConcept.values()) {
-            Object rawName = input.get(concept.name().toLowerCase());
+        Object rawNames = input.get("names");
+        if (!(rawNames instanceof List<?> rawList) || rawList.size() != SUGGESTION_COUNT) {
+            log.warn("Claude API 응답의 이름 개수가 올바르지 않습니다. keywords={}, mood={}, response={}", keywords, mood, rawNames);
+            throw new NameSuggestionFailedException("Claude API 응답의 상품명 개수가 올바르지 않습니다.");
+        }
+
+        List<String> suggestions = new ArrayList<>();
+        for (Object rawName : rawList) {
             if (!(rawName instanceof String name) || name.isBlank()) {
-                log.warn("Claude API 응답에 {} 상품명이 없습니다. keywords={}", concept.label(), keywords);
-                throw new NameSuggestionFailedException("Claude API 응답에 " + concept.label() + " 상품명이 없습니다.");
+                log.warn("Claude API 응답에 빈 상품명이 포함되어 있습니다. keywords={}, mood={}", keywords, mood);
+                throw new NameSuggestionFailedException("Claude API 응답에 빈 상품명이 포함되어 있습니다.");
             }
-            suggestions.add(new NameSuggestion(concept, name.trim()));
+            suggestions.add(name.trim());
         }
         return suggestions;
     }
 
-    // Tied directly to NamingConcept so the tool schema and response-parsing keys can
-    // never drift apart — adding a concept only requires touching the enum.
     private static Map<String, Object> buildInputSchema() {
+        Map<String, Object> namesProperty = new LinkedHashMap<>();
+        namesProperty.put("type", "array");
+        namesProperty.put("items", Map.of("type", "string"));
+        namesProperty.put("minItems", SUGGESTION_COUNT);
+        namesProperty.put("maxItems", SUGGESTION_COUNT);
+
         Map<String, Object> properties = new LinkedHashMap<>();
-        List<String> required = new ArrayList<>();
-        for (NamingConcept concept : NamingConcept.values()) {
-            String key = concept.name().toLowerCase();
-            properties.put(key, Map.of("type", "string"));
-            required.add(key);
-        }
+        properties.put("names", namesProperty);
+
         Map<String, Object> schema = new LinkedHashMap<>();
         schema.put("type", "object");
         schema.put("properties", properties);
-        schema.put("required", required);
+        schema.put("required", List.of("names"));
         return schema;
     }
 

@@ -23,14 +23,20 @@
                         </div>
 
                         <div class="flex flex-col gap-2 border border-base-300 rounded-box p-4">
-                            <label class="label" for="name-suggestion-keywords">AI 상품명 추천 (선택)</label>
-                            <div class="flex items-end gap-2">
-                                <input type="text" id="name-suggestion-keywords" placeholder="예: 니트, 겨울, 오버핏"
-                                       class="input input-bordered input-sm flex-1 min-w-0">
-                                <button type="button" id="name-suggestion-button" class="btn btn-outline btn-sm shrink-0" disabled>
-                                    AI 상품명 추천받기
-                                </button>
+                            <p class="font-medium text-sm">AI 상품명 추천 (선택)</p>
+                            <div class="flex flex-col gap-1">
+                                <label class="label" for="name-suggestion-keywords">포인트 단어</label>
+                                <input type="text" id="name-suggestion-keywords" placeholder="예: 린넨, 여름, 원피스, 시원한"
+                                       class="input input-bordered input-sm w-full">
                             </div>
+                            <div class="flex flex-col gap-1">
+                                <label class="label" for="name-suggestion-mood">컨셉/무드 (선택)</label>
+                                <input type="text" id="name-suggestion-mood" placeholder="예: 미니멀하게, 러블리하게"
+                                       class="input input-bordered input-sm w-full">
+                            </div>
+                            <button type="button" id="name-suggestion-button" class="btn btn-outline btn-sm self-start" disabled>
+                                이름 생성
+                            </button>
                             <p id="name-suggestion-error" class="text-error text-sm hidden"></p>
                             <div id="name-suggestion-results" class="grid grid-cols-1 sm:grid-cols-2 gap-2"></div>
                         </div>
@@ -167,18 +173,19 @@
     <script th:inline="none">
         (function () {
             var keywordsInput = document.getElementById('name-suggestion-keywords');
+            var moodInput = document.getElementById('name-suggestion-mood');
             var suggestButton = document.getElementById('name-suggestion-button');
             var resultsBox = document.getElementById('name-suggestion-results');
             var errorBox = document.getElementById('name-suggestion-error');
             var nameInput = document.getElementById('name');
             var csrfMeta = document.querySelector('meta[name="_csrf"]');
             var csrfHeaderMeta = document.querySelector('meta[name="_csrf_header"]');
-            if (!keywordsInput || !suggestButton || !resultsBox || !errorBox || !nameInput || !csrfMeta || !csrfHeaderMeta) {
+            if (!keywordsInput || !moodInput || !suggestButton || !resultsBox || !errorBox || !nameInput || !csrfMeta || !csrfHeaderMeta) {
                 return;
             }
 
-            var DEFAULT_LABEL = 'AI 상품명 추천받기';
-            var REGENERATE_LABEL = '새로 만들기';
+            var DEFAULT_LABEL = '이름 생성';
+            var REGENERATE_LABEL = '다시 생성';
             var hasGenerated = false;
 
             function updateButtonEnabled() {
@@ -200,23 +207,13 @@
                 errorBox.classList.add('hidden');
             }
 
-            function buildResultCard(suggestion) {
+            function buildResultCard(name) {
                 var card = document.createElement('button');
                 card.type = 'button';
-                card.className = 'card bg-base-100 border border-base-300 p-3 text-left hover:border-primary transition-colors';
-
-                var badge = document.createElement('span');
-                badge.className = 'badge badge-sm badge-primary mb-1 w-fit';
-                badge.textContent = suggestion.label;
-
-                var name = document.createElement('div');
-                name.className = 'font-medium';
-                name.textContent = suggestion.name;
-
-                card.appendChild(badge);
-                card.appendChild(name);
+                card.className = 'card bg-base-100 border border-base-300 p-3 text-left hover:border-primary transition-colors font-medium';
+                card.textContent = name;
                 card.addEventListener('click', function () {
-                    nameInput.value = suggestion.name;
+                    nameInput.value = name;
                 });
                 return card;
             }
@@ -240,15 +237,15 @@
                 fetch('/products/name-suggestions', {
                     method: 'POST',
                     headers: headers,
-                    body: JSON.stringify({keywords: keywords})
+                    body: JSON.stringify({keywords: keywords, mood: moodInput.value.trim()})
                 }).then(function (response) {
                     if (!response.ok) {
                         throw new Error('name suggestion request failed');
                     }
                     return response.json();
-                }).then(function (suggestions) {
-                    suggestions.forEach(function (suggestion) {
-                        resultsBox.appendChild(buildResultCard(suggestion));
+                }).then(function (names) {
+                    names.forEach(function (name) {
+                        resultsBox.appendChild(buildResultCard(name));
                     });
                     hasGenerated = true;
                 }).catch(function () {

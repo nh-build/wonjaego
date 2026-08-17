@@ -31,24 +31,45 @@ class ProductNameSuggestionTest {
     private MockMvc mockMvc;
 
     @Test
-    void 정상_키워드로_요청하면_4개_컨셉_후보를_컨셉_순서대로_받는다() throws Exception {
+    void 정상_포인트_단어로_요청하면_이름_5개를_받는다() throws Exception {
         MockHttpSession session = AuthTestSupport.signUpAndLogin(mockMvc, "namesuggest1", "password123", "가게1");
 
         mockMvc.perform(post("/products/name-suggestions")
                         .session(session).with(csrf())
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"keywords\":\"니트, 겨울, 오버핏\"}"))
+                        .content("{\"keywords\":\"린넨, 여름, 원피스\"}"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$", Matchers.hasSize(4)))
-                .andExpect(jsonPath("$[0].concept").value("SIMPLE"))
-                .andExpect(jsonPath("$[0].label").value("심플"))
-                .andExpect(jsonPath("$[1].concept").value("LOVELY"))
-                .andExpect(jsonPath("$[2].concept").value("SEXY"))
-                .andExpect(jsonPath("$[3].concept").value("CASUAL"));
+                .andExpect(jsonPath("$", Matchers.hasSize(5)))
+                .andExpect(jsonPath("$[0]").value("이름1"));
     }
 
     @Test
-    void 키워드를_입력하지_않으면_요청이_거부된다() throws Exception {
+    void 컨셉_무드_없이도_요청할_수_있다() throws Exception {
+        MockHttpSession session = AuthTestSupport.signUpAndLogin(mockMvc, "namesuggest5", "password123", "가게5");
+
+        mockMvc.perform(post("/products/name-suggestions")
+                        .session(session).with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"keywords\":\"린넨, 여름\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$", Matchers.hasSize(5)));
+    }
+
+    @Test
+    void 컨셉_무드를_함께_보내면_그대로_전달된다() throws Exception {
+        MockHttpSession session = AuthTestSupport.signUpAndLogin(mockMvc, "namesuggest6", "password123", "가게6");
+
+        mockMvc.perform(post("/products/name-suggestions")
+                        .session(session).with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"keywords\":\"린넨, 여름\", \"mood\":\"미니멀하게\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$", Matchers.hasSize(5)))
+                .andExpect(jsonPath("$[0]").value("이름1(미니멀하게)"));
+    }
+
+    @Test
+    void 포인트_단어를_입력하지_않으면_요청이_거부된다() throws Exception {
         MockHttpSession session = AuthTestSupport.signUpAndLogin(mockMvc, "namesuggest2", "password123", "가게2");
 
         mockMvc.perform(post("/products/name-suggestions")
