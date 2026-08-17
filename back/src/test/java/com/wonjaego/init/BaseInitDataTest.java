@@ -119,19 +119,15 @@ class BaseInitDataTest {
 
         MockHttpSession session = loginAsSampleMember();
 
-        // 변형 개수: 티셔츠 4개(블랙/화이트 × S/M) + 가방 1개 = 5개.
-        // 총재고 합계: 블랙/S 5(입고 20 - 판매 15) + 가방 9(입고 8 + 반품 1) = 14.
-        // 블랙/S 변형은 명시적으로 채워진 품절임박 기준(6) 이하라 대시보드에 뜬다.
-        // SKU("TSHIRT-BLACK-S")와 커스텀 기준(6)이 채워진 변형이기도 하다.
+        // 상품 2개(티셔츠, 가방)가 대시보드 상품 카드 목록에 보인다.
+        // 티셔츠의 상품별 재고 배지는 변형 4개 합계: 블랙/S 5(입고 20 - 판매 15) + 나머지 0 = 5.
+        // 가방(단일 변형)의 재고 배지는 8(입고) + 1(반품) = 9.
         mockMvc.perform(get("/").session(session))
                 .andExpect(status().isOk())
-                .andExpect(content().string(containsString("상품 수")))
-                .andExpect(content().string(containsString("5개")))
-                .andExpect(content().string(containsString("총재고 합계")))
-                .andExpect(content().string(containsString("14개")))
                 .andExpect(content().string(containsString("베이직 반팔 티셔츠")))
-                .andExpect(content().string(containsString("블랙 / S")))
-                .andExpect(content().string(containsString("TSHIRT-BLACK-S")));
+                .andExpect(content().string(containsString("레더 크로스백")))
+                .andExpect(content().string(containsString("재고 5")))
+                .andExpect(content().string(containsString("재고 9")));
 
         mockMvc.perform(get("/products").session(session))
                 .andExpect(status().isOk())

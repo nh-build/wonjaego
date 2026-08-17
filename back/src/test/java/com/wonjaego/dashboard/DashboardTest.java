@@ -1,12 +1,13 @@
 package com.wonjaego.dashboard;
 
-import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.not;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.model;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.wonjaego.channel.SalesChannelRepository;
@@ -19,6 +20,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.context.SpringBootTest.WebEnvironment;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.mock.web.MockHttpSession;
+import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
@@ -83,35 +85,35 @@ class DashboardTest {
     }
 
     @Test
-    void 변형_수와_총재고_합계가_표시된다() throws Exception {
+    void 상품_수와_각_상품의_재고가_표시된다() throws Exception {
         MockHttpSession session = AuthTestSupport.signUpAndLogin(mockMvc, "seller1", "password123", "가게1");
         createStockedVariant(session, "상품A", "10");
         createStockedVariant(session, "상품B", "20");
 
         mockMvc.perform(get("/").session(session))
                 .andExpect(status().isOk())
-                .andExpect(content().string(containsString("상품 수")))
-                .andExpect(content().string(containsString("2개")))
-                .andExpect(content().string(containsString("총재고 합계")))
-                .andExpect(content().string(containsString("30개")));
+                .andExpect(model().attribute("totalProductCount", 2))
+                .andExpect(content().string(containsString("상품A")))
+                .andExpect(content().string(containsString("재고 10")))
+                .andExpect(content().string(containsString("상품B")))
+                .andExpect(content().string(containsString("재고 20")));
     }
 
     @Test
-    void 재고가_기본값_5_이하인_변형은_품절임박_목록에_포함된다() throws Exception {
+    void 재고가_기본값_5_이하인_변형만_품절임박_집계에_포함된다() throws Exception {
         MockHttpSession session = AuthTestSupport.signUpAndLogin(mockMvc, "seller3", "password123", "가게3");
         createStockedVariant(session, "기본값초과", "6");
         createStockedVariant(session, "기본값이하", "5");
 
-        String body = mockMvc.perform(get("/").session(session))
+        mockMvc.perform(get("/").session(session))
                 .andExpect(status().isOk())
-                .andReturn().getResponse().getContentAsString();
-
-        assertThat(body).doesNotContain("기본값초과");
-        assertThat(body).contains("기본값이하");
+                .andExpect(model().attribute("lowStockVariantCount", 1L))
+                .andExpect(content().string(containsString("기본값초과")))
+                .andExpect(content().string(containsString("기본값이하")));
     }
 
     @Test
-    void 다른_회원의_변형은_개수_합계_품절임박_목록에_포함되지_않는다() throws Exception {
+    void 다른_회원의_변형은_상품_목록_집계에_포함되지_않는다() throws Exception {
         MockHttpSession otherSession = AuthTestSupport.signUpAndLogin(mockMvc, "seller4", "password123", "가게4");
         createStockedVariant(otherSession, "남의상품", "1");
 
@@ -120,8 +122,29 @@ class DashboardTest {
         mockMvc.perform(get("/").session(session))
                 .andExpect(status().isOk())
                 .andExpect(content().string(not(containsString("남의상품"))))
-                .andExpect(content().string(containsString("상품 수")))
-                .andExpect(content().string(containsString("0개")))
-                .andExpect(content().string(containsString("총재고 합계")));
+                .andExpect(model().attribute("totalProductCount", 0));
+    }
+
+    @Test
+    void 사진이_있는_상품은_대시보드_카드에_썸네일_이미지로_보인다() throws Exception {
+        MockHttpSession session = AuthTestSupport.signUpAndLogin(mockMvc, "seller6", "password123", "가게6");
+        MockMultipartFile photo = new MockMultipartFile("photo", "photo.jpg", "image/jpeg", "fake-jpeg-bytes".getBytes());
+
+        mockMvc.perform(multipart("/products")
+                        .file(photo)
+                        .session(session).with(csrf())
+                        .param("name", "사진상품")
+                        .param("price", "1000"))
+                .andExpect(status().is3xxRedirection());
+
+        Long productId = productRepository.findAll().stream()
+                .filter(p -> p.getName().equals("사진상품"))
+                .findFirst()
+                .orElseThrow()
+                .getId();
+
+        mockMvc.perform(get("/").session(session))
+                .andExpect(status().isOk())
+                .andExpect(content().string(containsString("/products/" + productId + "/photo")));
     }
 }
