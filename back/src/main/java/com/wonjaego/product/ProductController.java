@@ -1,9 +1,12 @@
 package com.wonjaego.product;
 
+import com.wonjaego.ai.NameSuggestionClient;
 import com.wonjaego.member.MemberPrincipal;
 import com.wonjaego.movement.MovementService;
 import com.wonjaego.storage.FileStorage;
 import jakarta.validation.Valid;
+import java.util.Arrays;
+import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.core.io.Resource;
 import org.springframework.http.MediaType;
@@ -17,6 +20,8 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.ResponseBody;
 
 @Controller
 @RequiredArgsConstructor
@@ -26,6 +31,7 @@ public class ProductController {
     private final ProductVariantService productVariantService;
     private final MovementService movementService;
     private final FileStorage fileStorage;
+    private final NameSuggestionClient nameSuggestionClient;
 
     @GetMapping("/products")
     public String list(@AuthenticationPrincipal MemberPrincipal principal, Model model) {
@@ -70,6 +76,32 @@ public class ProductController {
         }
         MediaType mediaType = MediaTypeFactory.getMediaType(photoKey).orElse(MediaType.APPLICATION_OCTET_STREAM);
         return ResponseEntity.ok().contentType(mediaType).body(fileStorage.load(photoKey));
+    }
+
+    // No ownership check needed here (unlike every other endpoint in this controller) —
+    // this runs before any Product exists. Login alone is already enforced by SecurityConfig's
+    // anyRequest().authenticated(), so no @AuthenticationPrincipal parameter is needed.
+    @PostMapping("/products/name-suggestions")
+    @ResponseBody
+    public List<NameSuggestionResponse> suggestNames(@RequestBody NameSuggestionRequest request) {
+        List<String> keywords = parseKeywords(request.keywords());
+        if (keywords.isEmpty()) {
+            throw new InvalidNameSuggestionRequestException("키워드를 입력해주세요.");
+        }
+        return nameSuggestionClient.suggest(keywords).stream()
+                .map(NameSuggestionResponse::from)
+                .toList();
+    }
+
+    private List<String> parseKeywords(String rawKeywords) {
+        if (rawKeywords == null) {
+            return List.of();
+        }
+        return Arrays.stream(rawKeywords.split(","))
+                .map(String::trim)
+                .filter(keyword -> !keyword.isEmpty())
+                .distinct()
+                .toList();
     }
 
     @GetMapping("/products/{id}/edit")
