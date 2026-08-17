@@ -2,35 +2,68 @@
 <html xmlns:th="http://www.thymeleaf.org" data-theme="wonjaego">
 <head th:replace="~{fragments/layout :: head('회원가입')}"></head>
 <body>
-    <header th:replace="~{fragments/layout :: header}"></header>
+    <header th:replace="~{fragments/layout :: appbar('회원가입', '/')}"></header>
 
-    <main class="flex-1 container mx-auto max-w-screen-md px-4 py-16 flex justify-center">
-        <div class="card w-full max-w-sm bg-base-200 shadow-sm">
+    <main class="flex-1 container mx-auto max-w-screen-md px-4 pb-16 flex justify-center">
+        <div class="card w-full max-w-sm bg-base-200 shadow-sm rounded-3xl">
             <div class="card-body">
-                <h2 class="card-title justify-center text-2xl">회원가입</h2>
-
-                <form th:action="@{/signup}" th:object="${form}" method="post" class="flex flex-col gap-3">
+                <form th:action="@{/signup}" th:object="${form}" method="post" class="flex flex-col gap-4">
                     <div class="flex flex-col gap-1">
                         <label class="label" for="username">아이디</label>
-                        <input id="username" type="text" th:field="*{username}" class="input input-bordered w-full">
+                        <input id="username" type="text" th:field="*{username}" placeholder="아이디를 입력하세요"
+                               class="input input-bordered rounded-full w-full">
                         <span class="text-error text-sm" th:if="${#fields.hasErrors('username')}" th:errors="*{username}"></span>
                     </div>
                     <div class="flex flex-col gap-1">
                         <label class="label" for="password">비밀번호</label>
-                        <input id="password" type="password" th:field="*{password}" class="input input-bordered w-full">
+                        <input id="password" type="password" th:field="*{password}" placeholder="비밀번호를 입력하세요"
+                               class="input input-bordered rounded-full w-full">
                         <span class="text-error text-sm" th:if="${#fields.hasErrors('password')}" th:errors="*{password}"></span>
                     </div>
                     <div class="flex flex-col gap-1">
+                        <label class="label" for="password-confirm">비밀번호 확인</label>
+                        <input id="password-confirm" type="password" placeholder="비밀번호를 다시 입력하세요"
+                               class="input input-bordered rounded-full w-full">
+                        <span id="password-confirm-error" class="text-error text-sm hidden">비밀번호가 일치하지 않습니다.</span>
+                    </div>
+                    <div class="flex flex-col gap-1">
                         <label class="label" for="businessName">상호명</label>
-                        <input id="businessName" type="text" th:field="*{businessName}" class="input input-bordered w-full">
+                        <input id="businessName" type="text" th:field="*{businessName}" placeholder="예: 원재고스토어"
+                               class="input input-bordered rounded-full w-full">
                         <span class="text-error text-sm" th:if="${#fields.hasErrors('businessName')}" th:errors="*{businessName}"></span>
                     </div>
-                    <button type="submit" class="btn btn-primary mt-2">가입하기</button>
+                    <button type="submit" class="btn btn-primary rounded-full mt-2">회원가입</button>
                 </form>
+
+                <p class="text-center text-sm text-base-content/60 mt-4">
+                    이미 계정이 있으신가요? <a href="/login" class="link link-primary font-medium">로그인</a>
+                </p>
             </div>
         </div>
     </main>
 
-    <footer th:replace="~{fragments/layout :: footer}"></footer>
+    <script th:inline="none">
+        (function () {
+            var form = document.querySelector('form');
+            var password = document.getElementById('password');
+            var confirm = document.getElementById('password-confirm');
+            var error = document.getElementById('password-confirm-error');
+            if (!form || !password || !confirm || !error) {
+                return;
+            }
+
+            form.addEventListener('submit', function (event) {
+                if (password.value !== confirm.value) {
+                    event.preventDefault();
+                    error.classList.remove('hidden');
+                    confirm.focus();
+                }
+            });
+
+            confirm.addEventListener('input', function () {
+                error.classList.add('hidden');
+            });
+        })();
+    </script>
 </body>
 </html>
