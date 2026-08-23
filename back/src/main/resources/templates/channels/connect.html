@@ -1,0 +1,389 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>채널 연동 - 원재고</title>
+
+    <link rel="stylesheet" as="style" crossorigin
+          href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
+
+    <style>
+        :root {
+            --color-bg: #F7FBFE;
+            --color-card: #FFFFFF;
+            --color-card-border: #E8EEF4;
+            --color-tile: #E4F0FA;
+            --color-accent: #D2E7F5;
+            --color-button-bg: #C5E1F2;
+            --color-button-text: #2B3A45;
+            --color-text: #2B3A45;
+            --color-text-muted: #8A97A3;
+            --color-warn-text: #E29388;
+            --color-warn-bg: #F7E3E0;
+            --color-ok-text: #5AA06E;
+            --color-ok-bg: #E3F1E8;
+        }
+
+        * { box-sizing: border-box; }
+
+        html, body {
+            margin: 0;
+            padding: 0;
+            background: var(--color-bg);
+            color: var(--color-text);
+            font-family: 'Pretendard', system-ui, sans-serif;
+        }
+
+        a { color: inherit; text-decoration: none; }
+        button { font-family: inherit; }
+
+        .page {
+            max-width: 480px;
+            margin: 0 auto;
+            min-height: 100vh;
+            padding: 20px 20px 40px;
+        }
+
+        .top-bar { display: flex; align-items: center; margin-bottom: 4px; }
+
+        .back-button, .top-bar-spacer { width: 40px; height: 40px; flex-shrink: 0; }
+
+        .back-button {
+            display: flex; align-items: center; justify-content: center;
+            border-radius: 999px; background: none; border: none; cursor: pointer;
+        }
+
+        .top-bar-title { flex: 1; text-align: center; }
+        .top-bar-title h1 { margin: 0; font-size: 1.25rem; font-weight: 700; }
+
+        .page-subtitle { margin: 12px 2px 20px; font-size: 0.85rem; color: var(--color-text-muted); }
+
+        h2.section-title { font-size: 0.95rem; font-weight: 700; margin: 20px 0 10px; }
+
+        .channel-options { display: flex; flex-direction: column; gap: 10px; }
+
+        .channel-option {
+            display: flex; align-items: center; gap: 12px;
+            background: var(--color-card); border: 1px solid var(--color-card-border);
+            border-radius: 16px; padding: 16px; cursor: pointer;
+        }
+
+        .channel-option.disabled { opacity: 0.55; cursor: not-allowed; }
+
+        .channel-option input[type="radio"] { display: none; }
+
+        .channel-radio-visual {
+            width: 22px; height: 22px; border-radius: 999px; border: 2px solid var(--color-card-border);
+            display: flex; align-items: center; justify-content: center; flex-shrink: 0; color: #fff;
+        }
+
+        .channel-check { display: none; }
+
+        .channel-option input:checked + .channel-radio-visual {
+            background: var(--color-button-bg); border-color: var(--color-button-bg); color: var(--color-button-text);
+        }
+
+        .channel-option input:checked + .channel-radio-visual .channel-check { display: block; }
+
+        .channel-name { flex: 1; font-weight: 700; font-size: 0.95rem; }
+
+        .channel-badge { font-size: 0.78rem; font-weight: 600; padding: 4px 10px; border-radius: 999px; white-space: nowrap; }
+        .channel-badge.available { color: var(--color-ok-text); background: none; }
+        .channel-badge.unavailable { color: var(--color-text-muted); background: var(--color-tile); }
+
+        #zigzag-key-section.hidden { display: none; }
+
+        .key-input {
+            width: 100%; border: 1px solid var(--color-card-border); border-radius: 14px;
+            padding: 14px; font-family: inherit; font-size: 0.9rem; margin-bottom: 10px;
+            background: var(--color-card); color: var(--color-text);
+        }
+
+        .key-hint { font-size: 0.78rem; color: var(--color-text-muted); line-height: 1.5; margin: 4px 2px 0; }
+
+        .encryption-notice {
+            display: flex; align-items: center; gap: 10px; margin-top: 16px;
+            background: var(--color-tile); border-radius: 14px; padding: 14px 16px;
+            font-size: 0.85rem; font-weight: 600;
+        }
+
+        .global-error {
+            background: var(--color-warn-bg); color: var(--color-warn-text);
+            border-radius: 12px; padding: 12px 14px; margin: 16px 0; font-size: 0.85rem;
+        }
+
+        .import-result {
+            background: var(--color-ok-bg); color: var(--color-ok-text);
+            border-radius: 12px; padding: 12px 14px; margin: 16px 0; font-size: 0.85rem; font-weight: 600;
+        }
+
+        .already-connected-notice {
+            font-size: 0.8rem; color: var(--color-text-muted); margin: 8px 2px 0;
+        }
+
+        #submit-button {
+            width: 100%; margin-top: 20px; border: none; border-radius: 16px; padding: 16px;
+            background: var(--color-button-bg); color: var(--color-button-text);
+            font-size: 1rem; font-weight: 700; cursor: pointer;
+            display: flex; align-items: center; justify-content: center; gap: 8px;
+        }
+
+        #submit-button:disabled { opacity: 0.7; cursor: not-allowed; }
+
+        .help-link {
+            display: inline-flex; align-items: center; gap: 6px; margin: 8px 2px 0;
+            border: none; background: none; padding: 0; cursor: pointer;
+            font-family: inherit; font-size: 0.82rem; font-weight: 600; color: var(--color-button-text);
+            text-decoration: underline; text-underline-offset: 2px;
+        }
+
+        .help-modal {
+            position: fixed; inset: 0; background: rgba(43, 58, 69, 0.6);
+            display: flex; align-items: flex-end; justify-content: center; z-index: 50;
+        }
+
+        .help-modal.hidden { display: none; }
+
+        .help-modal-content {
+            background: var(--color-bg); border-radius: 24px 24px 0 0;
+            max-width: 480px; width: 100%; max-height: 88vh; overflow-y: auto; padding: 20px 20px 28px;
+        }
+
+        .help-modal-header { display: flex; align-items: flex-start; justify-content: space-between; }
+
+        .help-modal-header h2 { margin: 0; font-size: 1.15rem; font-weight: 700; }
+        .help-modal-subtitle { margin: 4px 0 0; font-size: 0.82rem; color: var(--color-text-muted); }
+
+        #help-modal-close {
+            border: none; background: var(--color-tile); border-radius: 999px;
+            width: 32px; height: 32px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; cursor: pointer;
+        }
+
+        .help-steps { display: flex; flex-direction: column; gap: 10px; margin-top: 18px; }
+
+        .help-step {
+            display: flex; gap: 12px;
+            background: var(--color-card); border: 1px solid var(--color-card-border);
+            border-radius: 16px; padding: 14px 16px;
+        }
+
+        .help-step.emphasized { border-color: var(--color-warn-text); }
+
+        .help-step-number {
+            width: 24px; height: 24px; border-radius: 999px; background: var(--color-tile);
+            display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+            font-size: 0.82rem; font-weight: 700; margin-top: 1px;
+        }
+
+        .help-step-title { font-weight: 700; font-size: 0.9rem; }
+        .help-step-detail { margin-top: 3px; font-size: 0.8rem; color: var(--color-text-muted); }
+
+        .help-step-warning {
+            margin-top: 10px; background: var(--color-warn-bg); color: var(--color-warn-text);
+            border-radius: 12px; padding: 12px 14px; font-size: 0.8rem; line-height: 1.5;
+        }
+
+        .help-step-warning strong { display: block; margin-bottom: 3px; }
+
+        #partner-center-link {
+            display: flex; align-items: center; justify-content: center; gap: 6px;
+            width: 100%; margin-top: 18px; border: none; border-radius: 16px; padding: 16px;
+            background: var(--color-button-bg); color: var(--color-button-text);
+            font-size: 0.95rem; font-weight: 700;
+        }
+    </style>
+</head>
+<body>
+    <div class="page">
+        <div class="top-bar">
+            <a href="/" class="back-button" aria-label="홈으로">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <polyline points="15 18 9 12 15 6"></polyline>
+                </svg>
+            </a>
+            <div class="top-bar-title">
+                <h1>채널 연동</h1>
+            </div>
+            <span class="top-bar-spacer"></span>
+        </div>
+        <p class="page-subtitle">판매 중인 채널을 연결하면 상품을 자동으로 가져와요</p>
+
+        <div th:if="${importResult != null}" class="import-result"
+             th:text="${importResult.productCount()} + '개 상품을 가져왔어요!'"></div>
+
+        <form id="channel-connect-form" th:action="@{/channels/connect}" th:object="${form}" method="post">
+            <div th:if="${#fields.hasGlobalErrors()}" class="global-error">
+                <span th:each="err : ${#fields.errors('global')}" th:text="${err}"></span>
+            </div>
+
+            <h2 class="section-title">채널 선택</h2>
+            <div class="channel-options" id="channel-options">
+                <label class="channel-option" th:each="type : ${channelTypes}"
+                       th:classappend="${!type.integrationSupported} ? 'disabled' : ''">
+                    <input type="radio" name="channelType" th:value="${type}"
+                           th:checked="${type == form.channelType}"
+                           th:disabled="${!type.integrationSupported}">
+                    <span class="channel-radio-visual">
+                        <svg class="channel-check" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+                            <polyline points="20 6 9 17 4 12"></polyline>
+                        </svg>
+                    </span>
+                    <span class="channel-name" th:text="${type.label}"></span>
+                    <span th:if="${type.integrationSupported}" class="channel-badge available">연동 가능</span>
+                    <span th:unless="${type.integrationSupported}" class="channel-badge unavailable">준비중</span>
+                </label>
+            </div>
+
+            <div id="zigzag-key-section">
+                <h2 class="section-title">지그재그 API 키 입력</h2>
+                <input type="text" class="key-input" name="accessKey" placeholder="Access Key" autocomplete="off">
+                <input type="password" class="key-input" name="secretKey" placeholder="Secret Key" autocomplete="off">
+                <p class="key-hint">
+                    키 발급: 파트너센터 → 스토어 정보 관리 → API 인증키 관리<br>
+                    ※ 발급 시 GET-PRODUCT(상품조회) 권한을 꼭 포함하세요
+                </p>
+                <button type="button" id="help-open-button" class="help-link">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="10"></circle>
+                        <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 2-3 4"></path>
+                        <line x1="12" y1="17" x2="12.01" y2="17"></line>
+                    </svg>
+                    API 키 발급 방법 보기
+                </button>
+                <p th:if="${zigzagConnected}" class="already-connected-notice">
+                    이미 지그재그가 연동되어 있어요. 새로 입력하면 키가 갱신돼요.
+                </p>
+
+                <div class="encryption-notice">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <rect x="4" y="11" width="16" height="9" rx="2"></rect>
+                        <path d="M8 11V7a4 4 0 0 1 8 0v4"></path>
+                    </svg>
+                    <span>입력한 키는 암호화되어 안전하게 저장돼요</span>
+                </div>
+            </div>
+
+            <button type="submit" id="submit-button">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <line x1="12" y1="5" x2="12" y2="19"></line>
+                    <polyline points="6 13 12 19 18 13"></polyline>
+                </svg>
+                <span id="submit-button-label">연동하고 상품 가져오기</span>
+            </button>
+        </form>
+    </div>
+
+    <div id="help-modal" class="help-modal hidden">
+        <div class="help-modal-content">
+            <div class="help-modal-header">
+                <div>
+                    <h2>API 키 발급 방법</h2>
+                    <p class="help-modal-subtitle">지그재그 파트너센터에서 5분이면 돼요</p>
+                </div>
+                <button type="button" id="help-modal-close" aria-label="닫기">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+                        <line x1="18" y1="6" x2="6" y2="18"></line>
+                        <line x1="6" y1="6" x2="18" y2="18"></line>
+                    </svg>
+                </button>
+            </div>
+
+            <div class="help-steps">
+                <div class="help-step">
+                    <span class="help-step-number">1</span>
+                    <div>
+                        <div class="help-step-title">지그재그 파트너센터에 로그인</div>
+                        <div class="help-step-detail">partners.kakaostyle.com</div>
+                    </div>
+                </div>
+                <div class="help-step">
+                    <span class="help-step-number">2</span>
+                    <div>
+                        <div class="help-step-title">[스토어 정보 관리] → [API 인증키 관리] 메뉴로 이동</div>
+                    </div>
+                </div>
+                <div class="help-step">
+                    <span class="help-step-number">3</span>
+                    <div>
+                        <div class="help-step-title">[인증키 발급] 버튼을 누른다</div>
+                    </div>
+                </div>
+                <div class="help-step">
+                    <span class="help-step-number">4</span>
+                    <div>
+                        <div class="help-step-title">권한에서 GET-PRODUCT(상품조회)를 꼭 체크</div>
+                        <div class="help-step-detail">이 권한이 없으면 상품 가져오기가 실패해요</div>
+                    </div>
+                </div>
+                <div class="help-step emphasized">
+                    <span class="help-step-number">5</span>
+                    <div>
+                        <div class="help-step-title">발급 팝업에 뜬 Access Key·Secret Key를 둘 다 즉시 복사</div>
+                        <div class="help-step-warning">
+                            <strong>Secret Key는 발급 팝업에서 딱 한 번만 보여요.</strong>
+                            닫으면 다시 못 봐요 — 뜨는 즉시 복사하세요! (놓쳤으면 재발급)
+                        </div>
+                    </div>
+                </div>
+                <div class="help-step">
+                    <span class="help-step-number">6</span>
+                    <div>
+                        <div class="help-step-title">복사한 두 키를 앱 연동 화면에 붙여넣기</div>
+                    </div>
+                </div>
+            </div>
+
+            <a id="partner-center-link" href="https://partners.kakaostyle.com" target="_blank" rel="noopener noreferrer">
+                파트너센터 열기
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <line x1="7" y1="17" x2="17" y2="7"></line>
+                    <polyline points="7 7 17 7 17 17"></polyline>
+                </svg>
+            </a>
+        </div>
+    </div>
+
+    <script th:inline="none">
+        (function () {
+            var form = document.getElementById('channel-connect-form');
+            var options = document.getElementById('channel-options');
+            var zigzagSection = document.getElementById('zigzag-key-section');
+            var submitButton = document.getElementById('submit-button');
+            var submitButtonLabel = document.getElementById('submit-button-label');
+
+            function syncKeySection() {
+                var checked = options.querySelector('input[name="channelType"]:checked');
+                var isZigzag = checked && checked.value === 'ZIGZAG';
+                zigzagSection.classList.toggle('hidden', !isZigzag);
+            }
+
+            options.addEventListener('change', syncKeySection);
+            syncKeySection();
+
+            // Plain form submission (no preventDefault) — the browser still navigates on
+            // submit, this just gives the user "가져오는 중" feedback while it waits.
+            form.addEventListener('submit', function () {
+                submitButton.disabled = true;
+                submitButtonLabel.textContent = '상품을 가져오고 있어요… 잠시만 기다려주세요';
+            });
+
+            var helpOpenButton = document.getElementById('help-open-button');
+            var helpModal = document.getElementById('help-modal');
+            var helpModalClose = document.getElementById('help-modal-close');
+
+            helpOpenButton.addEventListener('click', function () {
+                helpModal.classList.remove('hidden');
+            });
+            helpModalClose.addEventListener('click', function () {
+                helpModal.classList.add('hidden');
+            });
+            helpModal.addEventListener('click', function (event) {
+                if (event.target === helpModal) {
+                    helpModal.classList.add('hidden');
+                }
+            });
+        })();
+    </script>
+</body>
+</html>

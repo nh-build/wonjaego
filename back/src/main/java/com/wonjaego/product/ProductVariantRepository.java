@@ -38,5 +38,8 @@ public interface ProductVariantRepository extends JpaRepository<ProductVariant, 
             + "WHERE v.member.id = :memberId AND v.sku = :sku")
     Optional<ProductVariant> findByMemberIdAndSku(@Param("memberId") Long memberId, @Param("sku") String sku);
 
+    // Backs 채널 연동 import's find-or-create dedup by the source channel's own item id.
+    Optional<ProductVariant> findByProductIdAndExternalItemId(Long productId, String externalItemId);
+
     void deleteAllByProductId(Long productId);
 }

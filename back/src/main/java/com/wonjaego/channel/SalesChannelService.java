@@ -27,6 +27,17 @@ public class SalesChannelService {
                 .orElseThrow(() -> new SalesChannelNotFoundException(channelId));
     }
 
+    // Backs 채널 연동 import (ADR 0007) — reuses a channel the seller already registered
+    // under this exact name instead of creating a duplicate.
+    @Transactional
+    public SalesChannel findOrCreateByName(Long memberId, String name) {
+        return salesChannelRepository.findByMemberIdAndName(memberId, name)
+                .orElseGet(() -> {
+                    Member member = memberRepository.getReferenceById(memberId);
+                    return salesChannelRepository.save(new SalesChannel(member, name));
+                });
+    }
+
     @Transactional
     public SalesChannel create(Long memberId, SalesChannelForm form) {
         if (salesChannelRepository.existsByMemberIdAndName(memberId, form.getName())) {

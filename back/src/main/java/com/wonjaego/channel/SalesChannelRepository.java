@@ -10,6 +10,8 @@ public interface SalesChannelRepository extends JpaRepository<SalesChannel, Long
 
     Optional<SalesChannel> findByIdAndMemberId(Long id, Long memberId);
 
+    Optional<SalesChannel> findByMemberIdAndName(Long memberId, String name);
+
     boolean existsByMemberIdAndName(Long memberId, String name);
 
     boolean existsByMemberIdAndNameAndIdNot(Long memberId, String name, Long id);

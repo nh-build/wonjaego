@@ -22,7 +22,10 @@ import lombok.NoArgsConstructor;
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @Entity
-@Table(name = "product_variants", uniqueConstraints = @UniqueConstraint(columnNames = {"member_id", "sku"}))
+@Table(name = "product_variants", uniqueConstraints = {
+        @UniqueConstraint(columnNames = {"member_id", "sku"}),
+        @UniqueConstraint(columnNames = {"product_id", "external_item_id"})
+})
 public class ProductVariant extends BaseEntity {
 
     public static final int DEFAULT_LOW_STOCK_THRESHOLD = 5;
@@ -48,11 +51,23 @@ public class ProductVariant extends BaseEntity {
 
     private Integer lowStockThreshold;
 
+    // Null for a manually-registered variant (ADR 0006). Set for a variant imported via
+    // 채널 연동 — the source channel's own item id, used to dedupe re-imports.
+    private String externalItemId;
+
     public ProductVariant(Product product, Set<OptionValue> optionValues) {
         this.member = product.getMember();
         this.product = product;
         this.optionValues = optionValues;
         this.stockQuantity = 0;
+    }
+
+    public ProductVariant(Product product, Set<OptionValue> optionValues, String externalItemId) {
+        this.member = product.getMember();
+        this.product = product;
+        this.optionValues = optionValues;
+        this.stockQuantity = 0;
+        this.externalItemId = externalItemId;
     }
 
     public void adjustStock(int delta) {

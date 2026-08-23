@@ -326,6 +326,9 @@
         <p class="empty-channels" th:if="${#lists.isEmpty(salesChannels)}">
             등록된 판매 채널이 없습니다. <a href="/channels">채널 등록하기</a>
         </p>
+        <p class="empty-channels">
+            <a href="/channels/connect">판매 채널 API로 연동하고 상품 가져오기 →</a>
+        </p>
 
         <div class="card menu-list">
             <div class="menu-row">
