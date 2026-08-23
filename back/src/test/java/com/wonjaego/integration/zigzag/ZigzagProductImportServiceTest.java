@@ -32,6 +32,10 @@ import org.springframework.transaction.annotation.Transactional;
 @Transactional
 class ZigzagProductImportServiceTest {
 
+    // sales_price/original_price deliberately differ on each item's site_list — the mapping
+    // must use original_price (sales_price is confirmed deprecated/unused in the real Open
+    // API schema even though its name suggests otherwise), so a test asserting the wrong
+    // value would only pass if that mapping were wrong.
     private static final String ONE_PRODUCT_TWO_ITEMS = """
             {
               "product_list": {
@@ -39,10 +43,23 @@ class ZigzagProductImportServiceTest {
                   {
                     "id": "P1",
                     "name": "린넨 원피스",
-                    "price": { "original_price": 39000 },
+                    "sales_status": "SALE",
+                    "display_status": "DISPLAY",
+                    "image_list": [ { "image_url": "https://cdn.zigzag.kr/P1.jpg", "image_type": "MAIN" } ],
+                    "site_list": [ { "site": "ZIGZAG", "country": "KOR", "original_price": 39000, "discount_price": 35000 } ],
+                    "option_list": [
+                      { "name": "색상", "value_list": [ { "value": "블랙" } ] },
+                      { "name": "사이즈", "value_list": [ { "value": "S" }, { "value": "M" } ] }
+                    ],
                     "item_list": [
-                      { "id": "I1", "attribute_list": [{"name":"색상","value":"블랙"},{"name":"사이즈","value":"S"}], "inventory": {"quantity": 10} },
-                      { "id": "I2", "attribute_list": [{"name":"색상","value":"블랙"},{"name":"사이즈","value":"M"}], "inventory": {"quantity": 5} }
+                      { "id": "I1", "name": "블랙/S", "item_code": "C1", "sales_status": "SALE",
+                        "attribute_list": [{"name":"색상","value":"블랙"},{"name":"사이즈","value":"S"}],
+                        "inventory": {"quantity": 10},
+                        "site_list": [ { "site": "ZIGZAG", "country": "KOR", "sales_price": 29000, "original_price": 32000 } ] },
+                      { "id": "I2", "name": "블랙/M", "item_code": "C2", "sales_status": "SALE",
+                        "attribute_list": [{"name":"색상","value":"블랙"},{"name":"사이즈","value":"M"}],
+                        "inventory": {"quantity": 5},
+                        "site_list": [ { "site": "ZIGZAG", "country": "KOR", "sales_price": 29000, "original_price": 35000 } ] }
                     ]
                   }
                 ]
@@ -96,12 +113,16 @@ class ZigzagProductImportServiceTest {
         assertThat(product.getName()).isEqualTo("린넨 원피스");
         assertThat(product.getExternalChannelType()).isEqualTo(ChannelType.ZIGZAG);
         assertThat(product.getExternalProductId()).isEqualTo("P1");
+        assertThat(product.getExternalImageUrl()).isEqualTo("https://cdn.zigzag.kr/P1.jpg");
 
         List<ProductVariant> variants = productVariantRepository.findAllByProductIdWithOptions(product.getId());
         Map<String, ProductVariant> byLabel = variants.stream()
                 .collect(Collectors.toMap(ProductVariant::getOptionLabel, v -> v));
         assertThat(byLabel.get("블랙 / S").getStockQuantity()).isEqualTo(10);
         assertThat(byLabel.get("블랙 / M").getStockQuantity()).isEqualTo(5);
+        // original_price, not sales_price (deprecated/unused in the real Open API).
+        assertThat(byLabel.get("블랙 / S").getPrice()).isEqualByComparingTo("32000");
+        assertThat(byLabel.get("블랙 / M").getPrice()).isEqualByComparingTo("35000");
 
         assertThat(salesChannelRepository.findByMemberIdAndName(memberId, "지그재그")).isPresent();
         List<com.wonjaego.movement.Movement> movements =
@@ -112,14 +133,14 @@ class ZigzagProductImportServiceTest {
     }
 
     @Test
-    void 다시_가져오면_같은_상품을_중복_생성하지_않고_재고_차이만큼만_조정한다() {
+    void 다시_가져오면_같은_상품을_중복_생성하지_않고_재고와_가격_차이만큼만_조정한다() {
         Long memberId = createMemberWithZigzagKeys("zimport2");
         fakeClient().respondWith(ONE_PRODUCT_TWO_ITEMS);
         zigzagProductImportService.importProducts(memberId);
 
         String updatedResponse = ONE_PRODUCT_TWO_ITEMS
                 .replace("\"quantity\": 10", "\"quantity\": 15")
-                .replace("\"quantity\": 5", "\"quantity\": 5");
+                .replace("\"original_price\": 32000", "\"original_price\": 36000");
         fakeClient().respondWith(updatedResponse);
         ZigzagImportResult secondResult = zigzagProductImportService.importProducts(memberId);
 
@@ -133,6 +154,8 @@ class ZigzagProductImportServiceTest {
                 .collect(Collectors.toMap(ProductVariant::getOptionLabel, v -> v));
         assertThat(byLabel.get("블랙 / S").getStockQuantity()).isEqualTo(15);
         assertThat(byLabel.get("블랙 / M").getStockQuantity()).isEqualTo(5);
+        // Re-import refreshes price directly (no Movement involved — price isn't stock).
+        assertThat(byLabel.get("블랙 / S").getPrice()).isEqualByComparingTo("36000");
 
         List<com.wonjaego.movement.Movement> movements =
                 movementRepository.findAllByProductIdWithChannelAndVariant(product.getId());

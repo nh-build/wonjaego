@@ -163,21 +163,24 @@ class ProductCrudTest {
                 .andExpect(status().isNotFound());
     }
 
+    // ADR 0008 — price lives on ProductVariant, not Product; the product-level edit
+    // screen only ever touches the name (and photo), so a variant's price must survive
+    // a name edit untouched.
     @Test
-    void 상품명과_가격을_수정할_수_있다() throws Exception {
+    void 상품명을_수정해도_변형_가격은_그대로다() throws Exception {
         MockHttpSession session = AuthTestSupport.signUpAndLogin(mockMvc, "seller9", "password123", "가게9");
         createProduct(session, "원래이름", "1000");
         Product product = findByName("원래이름");
+        Long variantId = productVariantRepository.findAllByProductIdWithOptions(product.getId()).get(0).getId();
 
         mockMvc.perform(post("/products/" + product.getId() + "/edit")
                         .session(session).with(csrf())
-                        .param("name", "바뀐이름")
-                        .param("price", "2000"))
+                        .param("name", "바뀐이름"))
                 .andExpect(status().is3xxRedirection());
 
         Product updated = productRepository.findById(product.getId()).orElseThrow();
         assertThat(updated.getName()).isEqualTo("바뀐이름");
-        assertThat(updated.getPrice()).isEqualByComparingTo("2000");
+        assertThat(productVariantRepository.findById(variantId).orElseThrow().getPrice()).isEqualByComparingTo("1000");
     }
 
     @Test

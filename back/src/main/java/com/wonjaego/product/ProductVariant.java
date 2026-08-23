@@ -11,8 +11,12 @@ import jakarta.persistence.ManyToMany;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
+import java.math.BigDecimal;
+import java.text.NumberFormat;
 import java.util.Comparator;
 import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.Locale;
 import java.util.Set;
 import java.util.stream.Collectors;
 import lombok.AccessLevel;
@@ -55,18 +59,26 @@ public class ProductVariant extends BaseEntity {
     // 채널 연동 — the source channel's own item id, used to dedupe re-imports.
     private String externalItemId;
 
-    public ProductVariant(Product product, Set<OptionValue> optionValues) {
+    // ADR 0008 — price lives here, not on Product. Every variant always has one: computed
+    // from base price + option-value surcharges at manual registration, or taken directly
+    // from the channel's own SKU price on import.
+    @Column(nullable = false, precision = 12, scale = 2)
+    private BigDecimal price;
+
+    public ProductVariant(Product product, Set<OptionValue> optionValues, BigDecimal price) {
         this.member = product.getMember();
         this.product = product;
         this.optionValues = optionValues;
         this.stockQuantity = 0;
+        this.price = price;
     }
 
-    public ProductVariant(Product product, Set<OptionValue> optionValues, String externalItemId) {
+    public ProductVariant(Product product, Set<OptionValue> optionValues, BigDecimal price, String externalItemId) {
         this.member = product.getMember();
         this.product = product;
         this.optionValues = optionValues;
         this.stockQuantity = 0;
+        this.price = price;
         this.externalItemId = externalItemId;
     }
 
@@ -81,6 +93,10 @@ public class ProductVariant extends BaseEntity {
     public void updateSkuAndThreshold(String sku, Integer lowStockThreshold) {
         this.sku = sku;
         this.lowStockThreshold = lowStockThreshold;
+    }
+
+    public void updatePrice(BigDecimal price) {
+        this.price = price;
     }
 
     public int getEffectiveLowStockThreshold() {
@@ -103,5 +119,19 @@ public class ProductVariant extends BaseEntity {
     public String getDisplayName() {
         String optionLabel = getOptionLabel();
         return optionLabel.isEmpty() ? product.getName() : product.getName() + " / " + optionLabel;
+    }
+
+    // ADR 0008 — Product no longer stores its own price; this is the "대표가" shown in list/
+    // detail screens, computed on demand from the product's variants rather than kept in sync
+    // as a stored duplicate. The lowest variant price, with a "~" suffix when variants differ,
+    // e.g. "19,000원~" (spec-mandated format, ADR 0008).
+    public static String formatPriceRange(List<ProductVariant> variants) {
+        if (variants.isEmpty()) {
+            return "-";
+        }
+        BigDecimal min = variants.stream().map(ProductVariant::getPrice).min(Comparator.naturalOrder()).orElseThrow();
+        boolean uniform = variants.stream().allMatch(v -> v.getPrice().compareTo(min) == 0);
+        String formatted = NumberFormat.getIntegerInstance(Locale.KOREA).format(min.longValue()) + "원";
+        return uniform ? formatted : formatted + "~";
     }
 }

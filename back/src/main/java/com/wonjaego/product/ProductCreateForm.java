@@ -1,5 +1,6 @@
 package com.wonjaego.product;
 
+import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
@@ -17,7 +18,11 @@ public class ProductCreateForm {
     @NotBlank
     private String name;
 
+    // 기본가 — the price used directly when there are no option combinations, and as the
+    // base that each combo's price is calculated from (base + matching option-value
+    // surcharges) on the registration screen (ADR 0008).
     @NotNull
+    @DecimalMin(value = "0", message = "기본가는 0 이상이어야 합니다.")
     private BigDecimal price;
 
     private MultipartFile photo;
@@ -34,6 +39,12 @@ public class ProductCreateForm {
     // the registration screen renders and submits them). Blank/null is treated as "all zero"
     // for however many combinations end up being generated.
     private String stocksJson;
+
+    // JSON array of non-negative prices, one per generated combination, in the same order
+    // as stocksJson — the registration screen auto-calculates each combo's price (base +
+    // matching option-value surcharges) but lets the seller override any of them before
+    // submit. Blank/null defaults every combination to the base price (ADR 0008).
+    private String pricesJson;
 
     @Getter
     @Setter

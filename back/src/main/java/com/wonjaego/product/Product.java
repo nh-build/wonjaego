@@ -12,7 +12,6 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
-import java.math.BigDecimal;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -31,12 +30,13 @@ public class Product extends BaseEntity {
     @Column(nullable = false)
     private String name;
 
-    @Column(nullable = false, precision = 12, scale = 2)
-    private BigDecimal price;
-
     // Opaque key issued by FileStorage — never a filesystem path, so this stays valid
     // regardless of which FileStorage implementation is in use.
     private String photoKey;
+
+    // A channel-hosted image URL (e.g. Zigzag's own CDN) — distinct from photoKey, which is
+    // only for photos wonjaego itself stores via FileStorage (ADR 0003). Null unless imported.
+    private String externalImageUrl;
 
     // Both null for a manually-registered product (ADR 0006). Both set for a product
     // imported via 채널 연동 — externalProductId is that channel's own product id, used to
@@ -46,26 +46,27 @@ public class Product extends BaseEntity {
 
     private String externalProductId;
 
-    public Product(Member member, String name, BigDecimal price) {
+    public Product(Member member, String name) {
         this.member = member;
         this.name = name;
-        this.price = price;
     }
 
-    public Product(Member member, String name, BigDecimal price, ChannelType externalChannelType, String externalProductId) {
+    public Product(Member member, String name, ChannelType externalChannelType, String externalProductId) {
         this.member = member;
         this.name = name;
-        this.price = price;
         this.externalChannelType = externalChannelType;
         this.externalProductId = externalProductId;
     }
 
-    public void updateInfo(String name, BigDecimal price) {
+    public void updateInfo(String name) {
         this.name = name;
-        this.price = price;
     }
 
     public void updatePhotoKey(String photoKey) {
         this.photoKey = photoKey;
+    }
+
+    public void updateExternalImageUrl(String externalImageUrl) {
+        this.externalImageUrl = externalImageUrl;
     }
 }

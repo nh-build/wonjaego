@@ -2,6 +2,7 @@ package com.wonjaego.channel;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.containsString;
+import static org.hamcrest.Matchers.not;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -76,7 +77,7 @@ class ChannelConnectTest {
     }
 
     @Test
-    void API_키_발급_방법_도움말이_6단계와_경고_문구_파트너센터_링크를_포함한다() throws Exception {
+    void API_키_발급_방법_도움말이_4단계와_경고_문구_파트너센터_링크를_포함한다() throws Exception {
         MockHttpSession session = AuthTestSupport.signUpAndLogin(mockMvc, "conn6", "password123", "가게6");
 
         mockMvc.perform(get("/channels/connect").session(session))
@@ -85,10 +86,10 @@ class ChannelConnectTest {
                 .andExpect(content().string(containsString("지그재그 파트너센터에 로그인")))
                 .andExpect(content().string(containsString("[스토어 정보 관리] → [API 인증키 관리] 메뉴로 이동")))
                 .andExpect(content().string(containsString("[인증키 발급] 버튼을 누른다")))
-                .andExpect(content().string(containsString("GET-PRODUCT(상품조회)를 꼭 체크")))
-                .andExpect(content().string(containsString("Access Key·Secret Key를 둘 다 즉시 복사")))
+                .andExpect(content().string(containsString("→ Access Key·Secret Key가 팝업으로 떠요")))
                 .andExpect(content().string(containsString("복사한 두 키를 앱 연동 화면에 붙여넣기")))
                 .andExpect(content().string(containsString("Secret Key는 발급 팝업에서 딱 한 번만 보여요")))
+                .andExpect(content().string(not(containsString("GET-PRODUCT(상품조회)를 꼭 체크"))))
                 .andExpect(content().string(containsString("href=\"https://partners.kakaostyle.com\"")));
     }
 

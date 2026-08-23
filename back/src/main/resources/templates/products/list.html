@@ -68,12 +68,13 @@
                         </div>
 
                         <div class="flex flex-col gap-1">
-                            <label class="label" for="price">판매가</label>
+                            <label class="label" for="price">기본가</label>
                             <label class="input input-bordered rounded-full flex items-center gap-2 w-full">
                                 <input id="price" type="number" step="0.01" th:field="*{price}" placeholder="0" class="grow">
                                 <span class="text-base-content/50 text-sm">원</span>
                             </label>
                             <span class="text-error text-sm" th:if="${#fields.hasErrors('price')}" th:errors="*{price}"></span>
+                            <p class="text-xs text-base-content/50 mt-1">※ 옵션이 있으면 조합별 가격 = 기본가 + 옵션값 추가금</p>
                         </div>
 
                         <fieldset class="fieldset border border-base-300 rounded-2xl p-4">
@@ -87,6 +88,21 @@
                             <button type="button" id="option-add-button"
                                     class="btn btn-outline btn-sm border-dashed w-full mt-2">+ 옵션 추가</button>
                             <p class="text-xs text-base-content/50 mt-1">※ 옵션명을 '기장·핏·소재' 등 원하는 대로 바꿀 수 있어요</p>
+
+                            <div class="mt-3 rounded-2xl bg-base-100">
+                                <button type="button" id="surcharge-fold-toggle"
+                                        class="btn btn-ghost btn-sm w-full justify-between normal-case h-auto py-2">
+                                    <span class="flex items-center gap-2">
+                                        <span class="text-primary text-lg leading-none">＋</span>
+                                        <span class="flex flex-col items-start text-left">
+                                            <span class="font-medium text-sm">옵션 추가금 설정</span>
+                                            <span class="text-xs text-base-content/50 font-normal">특정 옵션에 추가 요금 (예: 긴버전 +4,000)</span>
+                                        </span>
+                                    </span>
+                                    <span id="surcharge-fold-chevron" class="text-base-content/50">⌄</span>
+                                </button>
+                                <div id="surcharge-fold-body" class="hidden flex flex-col gap-2 px-3 pb-3"></div>
+                            </div>
 
                             <div class="flex items-center justify-between mt-4 mb-2">
                                 <p class="font-medium text-sm">옵션별 재고</p>
@@ -112,6 +128,7 @@
                             </div>
 
                             <input type="hidden" id="stocks-json-input" th:field="*{stocksJson}">
+                            <input type="hidden" id="prices-json-input" th:field="*{pricesJson}">
                         </fieldset>
 
                         <button type="submit" class="btn btn-primary rounded-full mt-2">저장하기</button>
@@ -146,13 +163,16 @@
                                     <td>
                                         <img th:if="${product.photoKey != null}" th:src="@{'/products/' + ${product.id} + '/photo'}"
                                              class="w-12 h-12 object-cover rounded-box" alt="">
-                                        <div th:unless="${product.photoKey != null}"
+                                        <img th:if="${product.photoKey == null and product.externalImageUrl != null}"
+                                             th:src="${product.externalImageUrl}"
+                                             class="w-12 h-12 object-cover rounded-box" alt="">
+                                        <div th:if="${product.photoKey == null and product.externalImageUrl == null}"
                                              class="w-12 h-12 rounded-box bg-base-300 flex items-center justify-center text-base-content/40 text-[10px]">
                                             사진없음
                                         </div>
                                     </td>
                                     <td><a class="link link-hover font-medium" th:href="@{'/products/' + ${product.id}}" th:text="${product.name}"></a></td>
-                                    <td th:text="${product.price}"></td>
+                                    <td th:text="${priceRanges.get(product.id)} ?: '-'"></td>
                                     <td class="text-right">
                                         <div class="flex gap-2 justify-end">
                                             <a th:href="@{'/products/' + ${product.id} + '/edit'}" class="btn btn-ghost btn-sm">수정</a>
@@ -174,10 +194,11 @@
 
     <script th:inline="javascript">
         // On a validation-error redisplay, Spring re-binds the submitted optionGroups/
-        // stocksJson back onto the form — these carry that submitted state back into the
-        // JS so a rejected registration doesn't wipe out everything the user typed.
+        // stocksJson/pricesJson back onto the form — these carry that submitted state back
+        // into the JS so a rejected registration doesn't wipe out everything the user typed.
         var INITIAL_OPTION_GROUPS = /*[[${form.optionGroups}]]*/ [];
         var INITIAL_STOCKS_JSON = /*[[${form.stocksJson}]]*/ null;
+        var INITIAL_PRICES_JSON = /*[[${form.pricesJson}]]*/ null;
     </script>
     <script th:inline="none">
         (function () {
@@ -190,16 +211,33 @@
             var totalStockSummary = document.getElementById('total-stock-summary');
             var totalStockDisplay = document.getElementById('total-stock-display');
             var stocksJsonInput = document.getElementById('stocks-json-input');
+            var pricesJsonInput = document.getElementById('prices-json-input');
+            var basePriceInput = document.getElementById('price');
+            var surchargeFoldToggle = document.getElementById('surcharge-fold-toggle');
+            var surchargeFoldBody = document.getElementById('surcharge-fold-body');
+            var surchargeFoldChevron = document.getElementById('surcharge-fold-chevron');
             if (!optionRowsContainer || !addOptionButton || !variantStockSection || !variantStockRows
                     || !singleStockSection || !singleStockInput || !totalStockSummary || !totalStockDisplay
-                    || !stocksJsonInput) {
+                    || !stocksJsonInput || !pricesJsonInput || !basePriceInput
+                    || !surchargeFoldToggle || !surchargeFoldBody || !surchargeFoldChevron) {
                 return;
             }
 
+            surchargeFoldToggle.addEventListener('click', function () {
+                var collapsed = surchargeFoldBody.classList.toggle('hidden');
+                surchargeFoldChevron.textContent = collapsed ? '⌄' : '⌃';
+            });
+
             var rows = [];
             // Keyed by the combination's values joined together, so previously entered
-            // stock numbers survive re-rendering the table when an unrelated row changes.
+            // stock/price numbers survive re-rendering the table when an unrelated row changes.
             var stockByComboKey = {};
+            var priceByComboKey = {};
+            // A combo's price is auto-recalculated (base + matching surcharges) on every
+            // render UNLESS the seller has directly edited that combo's price input — this
+            // set tracks which combos have been explicitly overridden so later surcharge/base
+            // changes don't silently clobber a manual edit.
+            var priceOverriddenByComboKey = {};
 
             function parseValuesText(text) {
                 var seen = {};
@@ -214,11 +252,20 @@
                 return values;
             }
 
+            function basePrice() {
+                var base = parseFloat(basePriceInput.value);
+                return isNaN(base) || base < 0 ? 0 : base;
+            }
+
             // Rows with a blank name or no parsed values are treated as unused (matching
             // the server's skip-blank-row rule) — they don't take part in the combination.
             function activeGroups() {
                 return rows.map(function (row) {
-                    return {name: row.nameInput.value.trim(), values: parseValuesText(row.valuesInput.value)};
+                    return {
+                        name: row.nameInput.value.trim(),
+                        values: parseValuesText(row.valuesInput.value),
+                        surchargeByValue: row.surchargeByValue
+                    };
                 }).filter(function (group) {
                     return group.name.length > 0 && group.values.length > 0;
                 });
@@ -229,22 +276,29 @@
                 if (groups.length === 0) {
                     return [];
                 }
-                var combos = [[]];
+                var combos = [{values: [], surcharge: 0}];
                 groups.forEach(function (group) {
                     var next = [];
                     combos.forEach(function (combo) {
                         group.values.forEach(function (value) {
-                            next.push(combo.concat([value]));
+                            next.push({
+                                values: combo.values.concat([value]),
+                                surcharge: combo.surcharge + (group.surchargeByValue[value] || 0)
+                            });
                         });
                     });
                     combos = next;
                 });
-                return combos.map(function (values) {
+                return combos.map(function (combo) {
                     // JSON.stringify escapes each element, so two distinct value arrays
                     // can't collide onto the same key the way a plain-delimiter join could
                     // if a user's option value happened to contain the delimiter itself.
-                    return {label: values.join(' / '), key: JSON.stringify(values)};
+                    return {label: combo.values.join(' / '), key: JSON.stringify(combo.values), autoSurcharge: combo.surcharge};
                 });
+            }
+
+            function autoPrice(combo) {
+                return basePrice() + combo.autoSurcharge;
             }
 
             function reindexRows() {
@@ -263,9 +317,61 @@
                 });
             }
 
+            // Rebuilds the collapsible "옵션 추가금 설정" section from every currently active
+            // option group (name + parsed values) — one mini price-add input per value,
+            // grouped under its option name so two groups sharing a value text (e.g. two
+            // "블랙"s) don't collide visually. Existing surcharges survive (kept on each
+            // group's own surchargeByValue map, keyed by value text); values removed from
+            // the comma list just drop out on the next render.
+            function renderSurchargeFold() {
+                while (surchargeFoldBody.firstChild) {
+                    surchargeFoldBody.removeChild(surchargeFoldBody.firstChild);
+                }
+                activeGroups().forEach(function (group) {
+                    var groupWrap = document.createElement('div');
+                    groupWrap.className = 'flex flex-col gap-1';
+
+                    var groupLabel = document.createElement('span');
+                    groupLabel.className = 'text-xs font-medium text-base-content/70';
+                    groupLabel.textContent = group.name;
+                    groupWrap.appendChild(groupLabel);
+
+                    var valuesWrap = document.createElement('div');
+                    valuesWrap.className = 'flex flex-wrap gap-1';
+                    group.values.forEach(function (value) {
+                        var wrapper = document.createElement('label');
+                        wrapper.className = 'input input-bordered input-xs flex items-center gap-1 w-auto';
+
+                        var text = document.createElement('span');
+                        text.className = 'text-xs text-base-content/60 whitespace-nowrap';
+                        text.textContent = value + ' +';
+
+                        var surchargeInput = document.createElement('input');
+                        surchargeInput.type = 'number';
+                        surchargeInput.step = '0.01';
+                        surchargeInput.className = 'grow w-16';
+                        surchargeInput.value = String(group.surchargeByValue[value] || 0);
+                        surchargeInput.addEventListener('input', function () {
+                            var amount = parseFloat(surchargeInput.value);
+                            group.surchargeByValue[value] = isNaN(amount) ? 0 : amount;
+                            renderCombinationsAndTotals();
+                        });
+
+                        wrapper.appendChild(text);
+                        wrapper.appendChild(surchargeInput);
+                        valuesWrap.appendChild(wrapper);
+                    });
+                    groupWrap.appendChild(valuesWrap);
+                    surchargeFoldBody.appendChild(groupWrap);
+                });
+            }
+
             function addRow(initialName, initialValues, focusNew) {
                 var container = document.createElement('div');
-                container.className = 'flex gap-2 items-center';
+                container.className = 'flex flex-col gap-1';
+
+                var mainRow = document.createElement('div');
+                mainRow.className = 'flex gap-2 items-center';
 
                 var nameInput = document.createElement('input');
                 nameInput.type = 'text';
@@ -285,11 +391,16 @@
                 removeButton.setAttribute('aria-label', '옵션 줄 삭제');
                 removeButton.textContent = '✕';
 
-                container.appendChild(nameInput);
-                container.appendChild(valuesInput);
-                container.appendChild(removeButton);
+                mainRow.appendChild(nameInput);
+                mainRow.appendChild(valuesInput);
+                mainRow.appendChild(removeButton);
 
-                var row = {container: container, nameInput: nameInput, valuesInput: valuesInput};
+                container.appendChild(mainRow);
+
+                var row = {
+                    container: container, nameInput: nameInput, valuesInput: valuesInput,
+                    surchargeByValue: {}
+                };
 
                 nameInput.addEventListener('input', renderCombinationsAndTotals);
                 valuesInput.addEventListener('input', renderCombinationsAndTotals);
@@ -310,7 +421,7 @@
                 }
             }
 
-            function buildStockRow(combo) {
+            function buildComboRow(combo) {
                 var row = document.createElement('div');
                 row.className = 'flex items-center justify-between gap-2 px-3 py-2';
 
@@ -328,6 +439,26 @@
 
                 var right = document.createElement('div');
                 right.className = 'flex items-center gap-2';
+
+                var priceLabel = document.createElement('span');
+                priceLabel.className = 'text-xs text-base-content/50';
+                priceLabel.textContent = '가격';
+                var priceInput = document.createElement('input');
+                priceInput.type = 'number';
+                priceInput.step = '0.01';
+                priceInput.min = '0';
+                priceInput.value = String(combo.key in priceByComboKey ? priceByComboKey[combo.key] : autoPrice(combo));
+                priceInput.className = 'input input-bordered input-sm w-24';
+                priceInput.addEventListener('input', function () {
+                    var amount = parseFloat(priceInput.value);
+                    if (isNaN(amount) || amount < 0) {
+                        amount = 0;
+                    }
+                    priceByComboKey[combo.key] = amount;
+                    priceOverriddenByComboKey[combo.key] = true;
+                    updateTotalsAndHiddenFields();
+                });
+
                 var stockLabel = document.createElement('span');
                 stockLabel.className = 'text-xs text-base-content/50';
                 stockLabel.textContent = '재고';
@@ -346,6 +477,9 @@
                     updateTotalsAndHiddenFields();
                 });
                 badge.classList.toggle('hidden', (stockByComboKey[combo.key] || 0) !== 0);
+
+                right.appendChild(priceLabel);
+                right.appendChild(priceInput);
                 right.appendChild(stockLabel);
                 right.appendChild(stockInput);
 
@@ -358,6 +492,7 @@
                 var combos = buildCombinations();
                 var total;
                 var stocks;
+                var prices;
                 if (combos.length === 0) {
                     var single = parseInt(singleStockInput.value, 10);
                     if (isNaN(single) || single < 0) {
@@ -365,6 +500,7 @@
                     }
                     total = single;
                     stocks = [single];
+                    prices = [basePrice()];
                 } else {
                     stocks = combos.map(function (combo) {
                         return stockByComboKey[combo.key] || 0;
@@ -372,13 +508,38 @@
                     total = stocks.reduce(function (sum, s) {
                         return sum + s;
                     }, 0);
+                    prices = combos.map(function (combo) {
+                        return combo.key in priceByComboKey ? priceByComboKey[combo.key] : autoPrice(combo);
+                    });
                 }
                 totalStockDisplay.textContent = total + '개';
                 stocksJsonInput.value = JSON.stringify(stocks);
+                pricesJsonInput.value = JSON.stringify(prices);
             }
 
             function renderCombinationsAndTotals() {
+                renderSurchargeFold();
                 var combos = buildCombinations();
+                // Combo keys are option-value combinations, which can recur after a row is
+                // removed and re-added (or edited back to the same values) — drop any
+                // stock/price/override state for keys that no longer exist so a stale
+                // manually-overridden price can't silently reappear under a resurrected key.
+                var currentKeys = {};
+                combos.forEach(function (combo) { currentKeys[combo.key] = true; });
+                [stockByComboKey, priceByComboKey, priceOverriddenByComboKey].forEach(function (map) {
+                    Object.keys(map).forEach(function (key) {
+                        if (!(key in currentKeys)) {
+                            delete map[key];
+                        }
+                    });
+                });
+                // Recompute the auto price for every combo the seller hasn't manually
+                // overridden, so editing the base price or a surcharge updates them live.
+                combos.forEach(function (combo) {
+                    if (!priceOverriddenByComboKey[combo.key]) {
+                        priceByComboKey[combo.key] = autoPrice(combo);
+                    }
+                });
                 while (variantStockRows.firstChild) {
                     variantStockRows.removeChild(variantStockRows.firstChild);
                 }
@@ -393,7 +554,7 @@
                     singleStockSection.classList.add('hidden');
                     totalStockSummary.classList.remove('hidden');
                     combos.forEach(function (combo) {
-                        variantStockRows.appendChild(buildStockRow(combo));
+                        variantStockRows.appendChild(buildComboRow(combo));
                     });
                 }
                 updateTotalsAndHiddenFields();
@@ -403,10 +564,11 @@
                 addRow();
             });
             singleStockInput.addEventListener('input', updateTotalsAndHiddenFields);
+            basePriceInput.addEventListener('input', renderCombinationsAndTotals);
 
             // Rebuild whatever the user had entered before a validation error redisplayed
-            // this form (e.g. a stock-count mismatch) — otherwise the whole option/stock
-            // section would silently reset and the user would have to retype it all.
+            // this form (e.g. a stock-count mismatch) — otherwise the whole option/stock/
+            // price section would silently reset and the user would have to retype it all.
             (INITIAL_OPTION_GROUPS || []).forEach(function (group) {
                 if (group && (group.name || group.valuesText)) {
                     addRow(group.name, group.valuesText, false);
@@ -425,6 +587,25 @@
                     }
                 } catch (e) {
                     // Malformed stocksJson never reaches here in practice — the server
+                    // already rejects it before this page re-renders.
+                }
+            }
+            if (INITIAL_PRICES_JSON) {
+                try {
+                    var initialPrices = JSON.parse(INITIAL_PRICES_JSON);
+                    var priceCombos = buildCombinations();
+                    if (priceCombos.length > 0 && initialPrices.length === priceCombos.length) {
+                        // Restored prices are treated as explicit overrides — we can't tell
+                        // which were auto-calculated vs. hand-edited before the rejected
+                        // submit, so re-deriving them from the (possibly since-changed)
+                        // base price/surcharges would silently replace what was submitted.
+                        priceCombos.forEach(function (combo, index) {
+                            priceByComboKey[combo.key] = initialPrices[index];
+                            priceOverriddenByComboKey[combo.key] = true;
+                        });
+                    }
+                } catch (e) {
+                    // Malformed pricesJson never reaches here in practice — the server
                     // already rejects it before this page re-renders.
                 }
             }

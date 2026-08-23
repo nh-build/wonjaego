@@ -14,11 +14,6 @@
                         <input id="name" type="text" th:field="*{name}" class="input input-bordered w-full">
                         <span class="text-error text-sm" th:if="${#fields.hasErrors('name')}" th:errors="*{name}"></span>
                     </div>
-                    <div class="flex flex-col gap-1">
-                        <label class="label" for="price">가격</label>
-                        <input id="price" type="number" step="0.01" th:field="*{price}" class="input input-bordered w-full">
-                        <span class="text-error text-sm" th:if="${#fields.hasErrors('price')}" th:errors="*{price}"></span>
-                    </div>
                     <div class="flex flex-col gap-1" th:if="${hasPhoto}">
                         <span class="label">현재 사진</span>
                         <img th:src="@{'/products/' + ${productId} + '/photo'}" class="w-24 h-24 object-cover rounded-box">

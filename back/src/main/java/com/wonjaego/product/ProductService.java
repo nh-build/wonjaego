@@ -8,6 +8,7 @@ import com.wonjaego.movement.MovementType;
 import com.wonjaego.storage.FileStorage;
 import java.io.IOException;
 import java.io.UncheckedIOException;
+import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -73,9 +74,10 @@ public class ProductService {
         List<ParsedOptionGroup> optionGroups = parseOptionGroups(form.getOptionGroups());
         int expectedCombinationCount = combinationCount(optionGroups);
         List<Integer> initialStocks = parseStocks(form.getStocksJson(), expectedCombinationCount);
+        List<BigDecimal> prices = parsePrices(form.getPricesJson(), expectedCombinationCount, form.getPrice());
 
         Member member = memberRepository.getReferenceById(memberId);
-        Product product = productRepository.save(new Product(member, form.getName(), form.getPrice()));
+        Product product = productRepository.save(new Product(member, form.getName()));
 
         List<List<OptionValue>> groupsOfValues = new ArrayList<>();
         for (ParsedOptionGroup group : optionGroups) {
@@ -88,7 +90,7 @@ public class ProductService {
         // circular. Kept in sync by hand: adjustStock() + save(Movement) here must mirror
         // record()'s INBOUND branch exactly.
         for (int i = 0; i < combinations.size(); i++) {
-            ProductVariant variant = productVariantRepository.save(new ProductVariant(product, combinations.get(i)));
+            ProductVariant variant = productVariantRepository.save(new ProductVariant(product, combinations.get(i), prices.get(i)));
             int initialStock = initialStocks.get(i);
             if (initialStock > 0) {
                 variant.adjustStock(initialStock);
@@ -116,7 +118,7 @@ public class ProductService {
             validatePhoto(form.getPhoto());
         }
 
-        product.updateInfo(form.getName(), form.getPrice());
+        product.updateInfo(form.getName());
 
         if (hasPhoto) {
             String oldPhotoKey = product.getPhotoKey();
@@ -235,6 +237,31 @@ public class ProductService {
             throw new InvalidStockDataException("재고는 0 이상의 숫자여야 합니다.");
         }
         return stocks;
+    }
+
+    // Blank/missing pricesJson defaults every combination to the base price. Per-value
+    // surcharges only ever exist client-side (typed into the registration screen's JS) —
+    // the server has no way to reconstruct a per-combo price from nothing, so a caller that
+    // skips pricesJson entirely gets uniform base pricing across every combination, not
+    // base+surcharge (matches parseStocks()'s blank-defaults precedent, but note this one
+    // can't "know" surcharges the way stock defaults to zero).
+    private List<BigDecimal> parsePrices(String pricesJson, int expectedCount, BigDecimal basePrice) {
+        if (pricesJson == null || pricesJson.isBlank()) {
+            return new ArrayList<>(Collections.nCopies(expectedCount, basePrice));
+        }
+        List<BigDecimal> prices;
+        try {
+            prices = objectMapper.readValue(pricesJson, new TypeReference<List<BigDecimal>>() { });
+        } catch (JacksonException e) {
+            throw new InvalidPriceDataException("가격 데이터 형식이 올바르지 않습니다.");
+        }
+        if (prices.size() != expectedCount) {
+            throw new InvalidPriceDataException("가격 입력 개수가 옵션 조합 개수와 일치하지 않습니다.");
+        }
+        if (prices.stream().anyMatch(price -> price == null || price.signum() < 0)) {
+            throw new InvalidPriceDataException("가격은 0 이상의 숫자여야 합니다.");
+        }
+        return prices;
     }
 
     private List<OptionValue> saveOptionGroup(Product product, String name, List<String> values) {

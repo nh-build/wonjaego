@@ -40,26 +40,33 @@ public class ProductController {
     public String list(@AuthenticationPrincipal MemberPrincipal principal,
                         @RequestParam(required = false) String stock,
                         Model model) {
-        model.addAttribute("products", filteredProducts(principal.getMemberId(), stock));
-        model.addAttribute("stockFilter", stock);
+        addProductListModel(principal.getMemberId(), stock, model);
         model.addAttribute("form", new ProductCreateForm());
         return "products/list";
     }
 
-    // Backs the dashboard's "재고 부족"/"품절" tiles — "stock" is only ever "low" or "out"
-    // from those links; any other value (missing, typo, tampered) falls back to the
-    // unfiltered list rather than silently showing an empty/wrong subset.
-    private List<Product> filteredProducts(Long memberId, String stock) {
+    // Populates both "products" (optionally stock-filtered) and "priceRanges" (ADR 0008 —
+    // Product no longer stores its own price) from a single variants-by-product grouping,
+    // rather than querying variants twice.
+    private void addProductListModel(Long memberId, String stock, Model model) {
         List<Product> products = productService.listOwned(memberId);
-        if (!"low".equals(stock) && !"out".equals(stock)) {
-            return products;
-        }
         Map<Long, List<ProductVariant>> variantsByProductId = productVariantService.listOwned(memberId).stream()
                 .collect(Collectors.groupingBy(variant -> variant.getProduct().getId()));
-        return products.stream()
-                .filter(product -> variantsByProductId.getOrDefault(product.getId(), List.of()).stream()
-                        .anyMatch("out".equals(stock) ? v -> v.getStockQuantity() == 0 : ProductVariant::isLowStock))
-                .toList();
+
+        // "stock" is only ever "low" or "out" from the dashboard's tiles — any other value
+        // (missing, typo, tampered) falls back to the unfiltered list rather than silently
+        // showing an empty/wrong subset.
+        List<Product> filtered = ("low".equals(stock) || "out".equals(stock))
+                ? products.stream()
+                        .filter(product -> variantsByProductId.getOrDefault(product.getId(), List.of()).stream()
+                                .anyMatch("out".equals(stock) ? v -> v.getStockQuantity() == 0 : ProductVariant::isLowStock))
+                        .toList()
+                : products;
+
+        model.addAttribute("products", filtered);
+        model.addAttribute("stockFilter", stock);
+        model.addAttribute("priceRanges", variantsByProductId.entrySet().stream()
+                .collect(Collectors.toMap(Map.Entry::getKey, e -> ProductVariant.formatPriceRange(e.getValue()))));
     }
 
     @PostMapping("/products")
@@ -73,11 +80,11 @@ public class ProductController {
                 return "redirect:/products";
             } catch (InvalidPhotoException e) {
                 bindingResult.rejectValue("photo", "invalid", e.getMessage());
-            } catch (InvalidStockDataException e) {
+            } catch (InvalidStockDataException | InvalidPriceDataException e) {
                 bindingResult.reject("invalid", e.getMessage());
             }
         }
-        model.addAttribute("products", productService.listOwned(principal.getMemberId()));
+        addProductListModel(principal.getMemberId(), null, model);
         return "products/list";
     }
 
