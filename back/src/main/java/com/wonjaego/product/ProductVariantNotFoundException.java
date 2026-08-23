@@ -9,4 +9,8 @@ public class ProductVariantNotFoundException extends RuntimeException {
     public ProductVariantNotFoundException(Long id) {
         super("상품 변형을 찾을 수 없습니다: " + id);
     }
+
+    public ProductVariantNotFoundException(String sku) {
+        super("바코드로 상품을 찾을 수 없습니다: " + sku);
+    }
 }

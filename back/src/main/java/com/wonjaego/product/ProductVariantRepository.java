@@ -31,5 +31,12 @@ public interface ProductVariantRepository extends JpaRepository<ProductVariant, 
 
     boolean existsByMemberIdAndSkuAndIdNot(Long memberId, String sku, Long id);
 
+    // Barcode lookup for the 입고하기/출고하기 scan flow — SKU doubles as the barcode value.
+    @Query("SELECT DISTINCT v FROM ProductVariant v "
+            + "JOIN FETCH v.product "
+            + "LEFT JOIN FETCH v.optionValues ov LEFT JOIN FETCH ov.optionGroup "
+            + "WHERE v.member.id = :memberId AND v.sku = :sku")
+    Optional<ProductVariant> findByMemberIdAndSku(@Param("memberId") Long memberId, @Param("sku") String sku);
+
     void deleteAllByProductId(Long productId);
 }

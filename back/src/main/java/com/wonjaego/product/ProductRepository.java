@@ -2,6 +2,7 @@ package com.wonjaego.product;
 
 import java.util.List;
 import java.util.Optional;
+import org.springframework.data.domain.Limit;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface ProductRepository extends JpaRepository<Product, Long> {
@@ -9,4 +10,8 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
     List<Product> findAllByMemberId(Long memberId);
 
     Optional<Product> findByIdAndMemberId(Long id, Long memberId);
+
+    // Limit applied in the query itself (not after fetching) — a broad query can't load
+    // the seller's whole product table into memory just to truncate it.
+    List<Product> findByMemberIdAndNameContainingIgnoreCase(Long memberId, String name, Limit limit);
 }

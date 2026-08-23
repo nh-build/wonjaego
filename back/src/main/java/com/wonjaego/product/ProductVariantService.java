@@ -29,6 +29,17 @@ public class ProductVariantService {
                 .orElseThrow(() -> new ProductVariantNotFoundException(variantId));
     }
 
+    // Blank rejected here rather than left to the repository — an empty/blank sku must
+    // never resolve as "found" regardless of how the underlying `=` comparison behaves.
+    @Transactional(readOnly = true)
+    public ProductVariant getOwnedBySku(Long memberId, String sku) {
+        if (sku == null || sku.isBlank()) {
+            throw new ProductVariantNotFoundException(sku);
+        }
+        return productVariantRepository.findByMemberIdAndSku(memberId, sku.trim())
+                .orElseThrow(() -> new ProductVariantNotFoundException(sku));
+    }
+
     @Transactional
     public ProductVariant update(Long memberId, Long variantId, ProductVariantEditForm form) {
         ProductVariant variant = getOwned(memberId, variantId);

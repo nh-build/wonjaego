@@ -113,6 +113,49 @@ public class ProductController {
         return nameSuggestionClient.suggest(keywords, request.mood());
     }
 
+    // Backs the 입고하기/출고하기 screens' product-name search dropdown.
+    @GetMapping("/products/search")
+    @ResponseBody
+    public List<ProductSearchResult> search(@AuthenticationPrincipal MemberPrincipal principal,
+                                             @RequestParam(required = false) String q) {
+        String query = q == null ? "" : q.trim();
+        if (query.isEmpty()) {
+            return List.of();
+        }
+        return productService.search(principal.getMemberId(), query).stream()
+                .map(product -> new ProductSearchResult(product.getId(), product.getName()))
+                .toList();
+    }
+
+    // Backs the 입고하기/출고하기 screens' combo table once a product is selected by name.
+    @GetMapping("/products/{id}/stock-entry")
+    @ResponseBody
+    public ProductStockEntryResponse stockEntry(@AuthenticationPrincipal MemberPrincipal principal, @PathVariable Long id) {
+        Product product = productService.getOwned(principal.getMemberId(), id);
+        List<ProductVariant> variants = productVariantService.listForProduct(principal.getMemberId(), id);
+        return toStockEntryResponse(product, variants, null);
+    }
+
+    // Backs the 입고하기/출고하기 screens' barcode scan/manual-entry flow — SKU doubles as
+    // the barcode value (no separate barcode field on ProductVariant).
+    @GetMapping("/products/by-sku")
+    @ResponseBody
+    public ProductStockEntryResponse bySku(@AuthenticationPrincipal MemberPrincipal principal, @RequestParam String sku) {
+        ProductVariant matched = productVariantService.getOwnedBySku(principal.getMemberId(), sku);
+        Long productId = matched.getProduct().getId();
+        Product product = productService.getOwned(principal.getMemberId(), productId);
+        List<ProductVariant> variants = productVariantService.listForProduct(principal.getMemberId(), productId);
+        return toStockEntryResponse(product, variants, matched.getSku());
+    }
+
+    private ProductStockEntryResponse toStockEntryResponse(Product product, List<ProductVariant> variants, String matchedSku) {
+        List<StockEntryVariant> entryVariants = variants.stream()
+                .map(v -> new StockEntryVariant(v.getId(), v.getOptionLabel(), v.getSku(), v.getStockQuantity()))
+                .toList();
+        return new ProductStockEntryResponse(product.getId(), product.getName(), product.getPhotoKey() != null,
+                matchedSku, entryVariants);
+    }
+
     private List<String> parseKeywords(String rawKeywords) {
         if (rawKeywords == null) {
             return List.of();

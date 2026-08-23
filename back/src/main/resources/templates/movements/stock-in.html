@@ -1,0 +1,349 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>입고하기 - 원재고</title>
+
+    <link rel="stylesheet" as="style" crossorigin
+          href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
+
+    <style>
+        :root {
+            --color-bg: #F7FBFE;
+            --color-card: #FFFFFF;
+            --color-card-border: #E8EEF4;
+            --color-tile: #E4F0FA;
+            --color-accent: #D2E7F5;
+            --color-button-bg: #C5E1F2;
+            --color-button-text: #2B3A45;
+            --color-text: #2B3A45;
+            --color-text-muted: #8A97A3;
+            --color-warn-text: #E29388;
+            --color-warn-bg: #F7E3E0;
+            --color-ok-text: #5AA06E;
+            --color-ok-bg: #E3F1E8;
+            --color-primary-text: var(--color-ok-text);
+            --color-primary-bg: var(--color-ok-bg);
+        }
+
+        * { box-sizing: border-box; }
+
+        html, body {
+            margin: 0;
+            padding: 0;
+            background: var(--color-bg);
+            color: var(--color-text);
+            font-family: 'Pretendard', system-ui, sans-serif;
+        }
+
+        a { color: inherit; text-decoration: none; }
+        button { font-family: inherit; }
+
+        .page {
+            max-width: 480px;
+            margin: 0 auto;
+            min-height: 100vh;
+            padding: 20px 20px 40px;
+        }
+
+        .top-bar { display: flex; align-items: center; margin-bottom: 4px; }
+
+        .back-button, .top-bar-spacer { width: 40px; height: 40px; flex-shrink: 0; }
+
+        .back-button {
+            display: flex; align-items: center; justify-content: center;
+            border-radius: 999px; background: none; border: none; cursor: pointer;
+        }
+
+        .top-bar-title { flex: 1; text-align: center; }
+        .top-bar-title h1 { margin: 0; font-size: 1.25rem; font-weight: 700; }
+        .top-bar-subtitle { margin: 2px 0 0; font-size: 0.8rem; color: var(--color-text-muted); }
+
+        .search-row { display: flex; gap: 10px; margin: 20px 0 4px; align-items: stretch; }
+
+        .search-input-wrapper {
+            flex: 1; display: flex; align-items: center; gap: 8px;
+            background: var(--color-card); border: 1px solid var(--color-card-border);
+            border-radius: 14px; padding: 0 14px;
+        }
+
+        .search-input-wrapper svg { flex-shrink: 0; color: var(--color-text-muted); }
+
+        #search-input {
+            border: none; outline: none; flex: 1; padding: 14px 0;
+            font-size: 0.95rem; font-family: inherit; background: none; color: var(--color-text);
+        }
+
+        .scan-button-wrapper { display: flex; flex-direction: column; align-items: center; gap: 4px; }
+
+        #scan-button {
+            width: 56px; height: 56px; border-radius: 14px; border: none;
+            background: var(--color-button-bg); color: var(--color-button-text);
+            display: flex; align-items: center; justify-content: center; cursor: pointer;
+        }
+
+        .scan-label { font-size: 0.75rem; color: var(--color-text-muted); }
+
+        .search-results {
+            background: var(--color-card); border: 1px solid var(--color-card-border);
+            border-radius: 14px; margin-bottom: 12px; overflow: hidden;
+        }
+
+        .search-results.hidden { display: none; }
+
+        .search-result-item {
+            display: block; width: 100%; text-align: left; padding: 12px 14px;
+            border: none; background: none; font-size: 0.9rem; color: var(--color-text); cursor: pointer;
+        }
+
+        .search-result-item:not(:last-child) { border-bottom: 1px solid var(--color-card-border); }
+        .search-result-item:hover { background: var(--color-tile); }
+
+        h2.section-title { font-size: 0.95rem; font-weight: 700; margin: 20px 0 10px; }
+
+        #selected-product-section.hidden { display: none; }
+
+        .selected-product-card {
+            display: flex; align-items: center; gap: 12px;
+            background: var(--color-card); border: 1px solid var(--color-card-border);
+            border-radius: 16px; padding: 14px;
+        }
+
+        .selected-product-thumb {
+            width: 44px; height: 44px; border-radius: 10px; background: var(--color-tile);
+            flex-shrink: 0; display: flex; align-items: center; justify-content: center;
+            color: var(--color-text-muted);
+        }
+
+        .selected-product-info { flex: 1; min-width: 0; }
+        .selected-product-name { font-weight: 700; font-size: 0.95rem; }
+
+        .selected-product-barcode { margin-top: 2px; font-size: 0.8rem; color: var(--color-text-muted); }
+        .selected-product-barcode.hidden { display: none; }
+
+        #change-product-button {
+            border: 1px solid var(--color-card-border); background: var(--color-card);
+            border-radius: 999px; padding: 8px 14px; font-size: 0.8rem; color: var(--color-text); cursor: pointer;
+        }
+
+        .reason-chips { display: flex; flex-wrap: wrap; gap: 8px; }
+
+        .reason-chip {
+            border: 1px solid var(--color-card-border); background: var(--color-card);
+            border-radius: 999px; padding: 10px 16px; font-size: 0.85rem; font-weight: 600;
+            color: var(--color-text); cursor: pointer;
+        }
+
+        .reason-chip.selected {
+            background: var(--color-primary-bg); color: var(--color-primary-text); border-color: transparent;
+        }
+
+        #variant-section.hidden { display: none; }
+
+        .variant-rows {
+            background: var(--color-card); border: 1px solid var(--color-card-border); border-radius: 16px;
+            padding: 4px 14px;
+        }
+
+        .variant-row {
+            display: flex; align-items: center; gap: 10px; padding: 14px 0;
+        }
+
+        .variant-row:not(:last-child) { border-bottom: 1px solid var(--color-card-border); }
+
+        .variant-label { font-weight: 700; font-size: 0.9rem; flex: 1; min-width: 0; }
+        .variant-current { font-size: 0.8rem; color: var(--color-text-muted); margin-right: 6px; white-space: nowrap; }
+
+        .stepper { display: flex; align-items: center; gap: 6px; }
+
+        .stepper-button {
+            width: 32px; height: 32px; border-radius: 999px; border: none;
+            background: var(--color-tile); color: var(--color-text); font-size: 1.1rem;
+            display: flex; align-items: center; justify-content: center; cursor: pointer;
+        }
+
+        .stepper-button:disabled { opacity: 0.4; cursor: not-allowed; }
+
+        .stepper-value {
+            min-width: 48px; text-align: center; font-weight: 700; font-size: 0.9rem;
+            border: 1px solid var(--color-card-border); border-radius: 10px; padding: 6px 4px;
+            color: var(--color-primary-text);
+        }
+
+        textarea#memo-input {
+            width: 100%; border: 1px solid var(--color-card-border); border-radius: 14px;
+            padding: 14px; font-family: inherit; font-size: 0.9rem; resize: vertical; min-height: 60px;
+            background: var(--color-card); color: var(--color-text);
+        }
+
+        .out-of-stock-hint { margin: 10px 2px 0; font-size: 0.8rem; color: var(--color-warn-text); }
+
+        .global-error {
+            background: var(--color-warn-bg); color: var(--color-warn-text);
+            border-radius: 12px; padding: 12px 14px; margin: 16px 0; font-size: 0.85rem;
+        }
+
+        #submit-button {
+            width: 100%; margin-top: 20px; border: none; border-radius: 16px; padding: 16px;
+            background: var(--color-primary-bg); color: var(--color-primary-text);
+            font-size: 1rem; font-weight: 700; cursor: pointer;
+        }
+
+        #submit-button:disabled { opacity: 0.5; cursor: not-allowed; }
+
+        .scanner-modal {
+            position: fixed; inset: 0; background: rgba(43, 58, 69, 0.6);
+            display: flex; align-items: center; justify-content: center; z-index: 50; padding: 20px;
+        }
+
+        .scanner-modal.hidden { display: none; }
+
+        .scanner-modal-content {
+            background: var(--color-card); border-radius: 20px; padding: 20px;
+            max-width: 400px; width: 100%; max-height: 90vh; overflow-y: auto;
+        }
+
+        .scanner-modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+        .scanner-modal-header h3 { margin: 0; font-size: 1rem; }
+
+        #scanner-close {
+            border: none; background: var(--color-tile); border-radius: 999px;
+            width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; cursor: pointer;
+        }
+
+        #qr-reader { width: 100%; border-radius: 12px; overflow: hidden; background: #000; min-height: 200px; }
+
+        .scanner-hint { font-size: 0.78rem; color: var(--color-text-muted); margin: 10px 0 0; line-height: 1.4; }
+
+        .barcode-manual-row { display: flex; gap: 8px; margin-top: 14px; }
+
+        #barcode-input {
+            flex: 1; border: 1px solid var(--color-card-border); border-radius: 10px;
+            padding: 10px 12px; font-family: inherit; font-size: 0.9rem;
+        }
+
+        #barcode-lookup-button {
+            border: none; border-radius: 10px; padding: 0 16px;
+            background: var(--color-button-bg); color: var(--color-button-text); cursor: pointer; font-weight: 600;
+        }
+
+        .barcode-error { min-height: 1.2em; margin-top: 8px; font-size: 0.8rem; color: var(--color-warn-text); }
+    </style>
+</head>
+<body>
+    <div class="page">
+        <div class="top-bar">
+            <a href="/" class="back-button" aria-label="홈으로">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <polyline points="15 18 9 12 15 6"></polyline>
+                </svg>
+            </a>
+            <div class="top-bar-title">
+                <h1>입고하기</h1>
+                <p class="top-bar-subtitle">재고를 채웁니다 (+)</p>
+            </div>
+            <span class="top-bar-spacer"></span>
+        </div>
+
+        <div class="search-row">
+            <div class="search-input-wrapper">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+                    <circle cx="11" cy="11" r="7"></circle>
+                    <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                </svg>
+                <input type="text" id="search-input" placeholder="상품명 검색" autocomplete="off">
+            </div>
+            <div class="scan-button-wrapper">
+                <button type="button" id="scan-button" aria-label="바코드 스캔">
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+                        <line x1="4" y1="5" x2="4" y2="19"></line>
+                        <line x1="8" y1="5" x2="8" y2="19"></line>
+                        <line x1="11" y1="5" x2="11" y2="19"></line>
+                        <line x1="14" y1="5" x2="14" y2="19"></line>
+                        <line x1="18" y1="5" x2="18" y2="19"></line>
+                        <line x1="21" y1="5" x2="21" y2="19"></line>
+                    </svg>
+                </button>
+                <span class="scan-label">스캔</span>
+            </div>
+        </div>
+        <div id="search-results" class="search-results hidden"></div>
+
+        <h2 class="section-title">선택된 상품</h2>
+        <div id="selected-product-section" class="hidden">
+            <div class="selected-product-card">
+                <div class="selected-product-thumb">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M6 3h12l-1.5 5H7.5L6 3z"></path>
+                        <path d="M12 8v13"></path>
+                        <path d="M4 21l3-10h10l3 10"></path>
+                    </svg>
+                </div>
+                <div class="selected-product-info">
+                    <div class="selected-product-name" id="selected-product-name"></div>
+                    <div class="selected-product-barcode hidden" id="selected-product-barcode"></div>
+                </div>
+                <button type="button" id="change-product-button">변경</button>
+            </div>
+        </div>
+
+        <form id="stock-movement-form" th:action="@{/movements/stock-in}" th:object="${form}" method="post">
+            <div th:if="${#fields.hasGlobalErrors()}" class="global-error">
+                <span th:each="err : ${#fields.errors('global')}" th:text="${err}"></span>
+            </div>
+
+            <input type="hidden" id="product-id-input" name="productId" value="">
+            <input type="hidden" id="type-input" name="type" value="">
+
+            <h2 class="section-title">입고 사유</h2>
+            <div class="reason-chips" id="reason-chips">
+                <button type="button" class="reason-chip" data-type="INBOUND">구매입고</button>
+                <button type="button" class="reason-chip" data-type="RETURN">반품</button>
+                <button type="button" class="reason-chip" data-type="ADJUSTMENT_IN">조정</button>
+            </div>
+
+            <h2 class="section-title">옵션별 입고 수량</h2>
+            <div id="variant-section" class="hidden">
+                <div class="variant-rows" id="variant-rows"></div>
+            </div>
+
+            <h2 class="section-title">메모 (선택)</h2>
+            <textarea id="memo-input" name="memo" placeholder="예: 8월 사입분"></textarea>
+
+            <button type="submit" id="submit-button" disabled>입고 처리</button>
+        </form>
+    </div>
+
+    <div id="scanner-modal" class="scanner-modal hidden">
+        <div class="scanner-modal-content">
+            <div class="scanner-modal-header">
+                <h3>바코드 스캔</h3>
+                <button type="button" id="scanner-close" aria-label="닫기">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+                        <line x1="18" y1="6" x2="6" y2="18"></line>
+                        <line x1="6" y1="6" x2="18" y2="18"></line>
+                    </svg>
+                </button>
+            </div>
+            <div id="qr-reader"></div>
+            <div class="barcode-manual-row">
+                <input type="text" id="barcode-input" placeholder="바코드 직접 입력" autocomplete="off">
+                <button type="button" id="barcode-lookup-button">조회</button>
+            </div>
+            <div class="barcode-error" id="barcode-error"></div>
+            <p class="scanner-hint">카메라는 HTTPS(또는 localhost) 환경에서만 열려요. 카메라가 열리지 않으면 위 입력창에 바코드 번호를 직접 입력해주세요.</p>
+        </div>
+    </div>
+
+    <script th:inline="javascript">
+        var INITIAL_PRODUCT_ID = /*[[${form.productId}]]*/ null;
+        var INITIAL_TYPE = /*[[${form.type != null ? form.type.name() : null}]]*/ null;
+    </script>
+    <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+    <script th:inline="none" th:src="@{/js/stock-movement.js}"></script>
+    <script th:inline="none">
+        initStockMovementForm({ stockIn: true });
+    </script>
+</body>
+</html>

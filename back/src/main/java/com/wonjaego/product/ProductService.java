@@ -15,6 +15,7 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Limit;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
@@ -49,6 +50,13 @@ public class ProductService {
     public Product getOwned(Long memberId, Long productId) {
         return productRepository.findByIdAndMemberId(productId, memberId)
                 .orElseThrow(() -> new ProductNotFoundException(productId));
+    }
+
+    // Backs the 입고하기/출고하기 screens' product-name search. Capped in the query itself
+    // so a broad query (e.g. a single common character) can't return an unbounded result set.
+    @Transactional(readOnly = true)
+    public List<Product> search(Long memberId, String query) {
+        return productRepository.findByMemberIdAndNameContainingIgnoreCase(memberId, query, Limit.of(20));
     }
 
     @Transactional
