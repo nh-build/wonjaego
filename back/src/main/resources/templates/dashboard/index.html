@@ -174,98 +174,39 @@
             color: var(--color-text-muted);
         }
 
-        .product-list {
-            display: flex;
-            flex-direction: column;
-            gap: 12px;
-            margin-bottom: 24px;
+        .quick-actions {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 10px;
+            margin-bottom: 28px;
         }
 
-        .product-card {
+        .quick-action {
             display: flex;
+            flex-direction: column;
             align-items: center;
-            gap: 14px;
+            gap: 8px;
             background: var(--color-card);
             border: 1px solid var(--color-card-border);
             border-radius: 16px;
-            padding: 14px;
+            padding: 16px 6px;
+            text-align: center;
         }
 
-        .product-thumb {
-            width: 56px;
-            height: 56px;
-            border-radius: 12px;
-            background: var(--color-tile);
-            flex-shrink: 0;
-            object-fit: cover;
-        }
-
-        .product-info {
-            flex: 1;
-            min-width: 0;
-        }
-
-        .product-name {
-            font-weight: 600;
-            font-size: 0.95rem;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-        }
-
-        .channel-chips {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 6px;
-            margin-top: 6px;
-        }
-
-        .chip {
-            background: var(--color-accent);
-            color: var(--color-text);
-            font-size: 0.7rem;
-            padding: 3px 9px;
+        .quick-action-icon {
+            width: 40px;
+            height: 40px;
             border-radius: 999px;
+            background: var(--color-tile);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--color-text);
         }
 
-        .stock-badge {
-            flex-shrink: 0;
+        .quick-action-label {
             font-size: 0.8rem;
             font-weight: 600;
-            padding: 6px 12px;
-            border-radius: 999px;
-            background: var(--color-ok-bg);
-            color: var(--color-ok-text);
-        }
-
-        .stock-badge.warn {
-            background: var(--color-warn-bg);
-            color: var(--color-warn-text);
-        }
-
-        .empty-state {
-            text-align: center;
-            color: var(--color-text-muted);
-            padding: 32px 0;
-            font-size: 0.9rem;
-        }
-
-        .action-button {
-            display: block;
-            width: 100%;
-            text-align: center;
-            padding: 16px;
-            border-radius: 16px;
-            border: none;
-            font-size: 1rem;
-            font-weight: 700;
-            color: var(--color-button-text);
-            cursor: pointer;
-            margin-bottom: 12px;
-        }
-
-        .action-button.primary {
-            background: var(--color-button-bg);
         }
 
         .tab-bar {
@@ -311,7 +252,7 @@
 <body>
     <div class="page">
         <div class="top-bar">
-            <a href="/"><img src="/images/logo.png" alt="원재고"></a>
+            <a href="/"><img src="/logo_ver1.png" alt="원재고"></a>
             <div class="menu-wrapper">
                 <button type="button" id="dashboard-menu-button" class="icon-button" aria-label="메뉴">
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
@@ -338,39 +279,62 @@
                 <div class="tile-value" th:text="${totalProductCount}"></div>
                 <div class="tile-label">전체 상품</div>
             </div>
-            <div class="tile">
+            <a href="/products?stock=low" class="tile">
                 <div class="tile-value warn" th:text="${lowStockVariantCount}"></div>
                 <div class="tile-label">재고 부족</div>
-            </div>
-            <div class="tile">
+            </a>
+            <a href="/products?stock=out" class="tile">
                 <div class="tile-value warn" th:text="${outOfStockVariantCount}"></div>
                 <div class="tile-label">품절</div>
-            </div>
-        </div>
-
-        <div class="section-header">
-            <h2>내 상품</h2>
-            <a href="/products">전체보기</a>
-        </div>
-
-        <p class="empty-state" th:if="${#lists.isEmpty(productRows)}">등록된 상품이 없습니다.</p>
-
-        <div class="product-list" th:unless="${#lists.isEmpty(productRows)}">
-            <a class="product-card" th:each="row : ${productRows}" th:href="@{'/products/' + ${row.id}}">
-                <img th:if="${row.hasPhoto}" th:src="@{'/products/' + ${row.id} + '/photo'}" class="product-thumb" alt="">
-                <div th:unless="${row.hasPhoto}" class="product-thumb"></div>
-                <div class="product-info">
-                    <div class="product-name" th:text="${row.name}"></div>
-                    <div class="channel-chips" th:if="${!#lists.isEmpty(salesChannels)}">
-                        <span class="chip" th:each="channel : ${salesChannels}" th:text="${channel}"></span>
-                    </div>
-                </div>
-                <span class="stock-badge" th:classappend="${row.lowStock} ? 'warn' : ''"
-                      th:text="'재고 ' + ${row.totalStock}"></span>
             </a>
         </div>
 
-        <a href="/products" class="action-button primary">상품 등록</a>
+        <div class="section-header">
+            <h2>빠른 작업</h2>
+        </div>
+
+        <div class="quick-actions">
+            <a href="/products" class="quick-action">
+                <span class="quick-action-icon">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+                        <line x1="12" y1="5" x2="12" y2="19"></line>
+                        <line x1="5" y1="12" x2="19" y2="12"></line>
+                    </svg>
+                </span>
+                <span class="quick-action-label">상품 등록</span>
+            </a>
+            <a href="/movements/new?type=INBOUND" class="quick-action">
+                <span class="quick-action-icon">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <line x1="12" y1="5" x2="12" y2="19"></line>
+                        <polyline points="6 13 12 19 18 13"></polyline>
+                    </svg>
+                </span>
+                <span class="quick-action-label">입고하기</span>
+            </a>
+            <a href="/movements/new?type=SALE" class="quick-action">
+                <span class="quick-action-icon">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <line x1="12" y1="19" x2="12" y2="5"></line>
+                        <polyline points="6 11 12 5 18 11"></polyline>
+                    </svg>
+                </span>
+                <span class="quick-action-label">출고하기</span>
+            </a>
+            <a href="/products#product-list" class="quick-action">
+                <span class="quick-action-icon">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <line x1="9" y1="6" x2="20" y2="6"></line>
+                        <line x1="9" y1="12" x2="20" y2="12"></line>
+                        <line x1="9" y1="18" x2="20" y2="18"></line>
+                        <circle cx="4" cy="6" r="1.2" fill="currentColor" stroke="none"></circle>
+                        <circle cx="4" cy="12" r="1.2" fill="currentColor" stroke="none"></circle>
+                        <circle cx="4" cy="18" r="1.2" fill="currentColor" stroke="none"></circle>
+                    </svg>
+                </span>
+                <span class="quick-action-label">상품 목록</span>
+            </a>
+        </div>
     </div>
 
     <nav class="tab-bar">

@@ -1,13 +1,13 @@
 <!DOCTYPE html>
 <html xmlns:th="http://www.thymeleaf.org" data-theme="wonjaego">
 <head th:replace="~{fragments/layout :: head('로그인')}"></head>
-<body>
+<body class="min-h-screen flex flex-col">
     <header th:replace="~{fragments/layout :: appbar('로그인', '/')}"></header>
 
-    <main class="flex-1 flex items-center justify-center px-4 pb-8">
+    <main class="flex-1 flex items-end justify-center px-4 pb-12">
         <div class="card w-full max-w-sm bg-base-200 shadow-sm rounded-3xl">
             <div class="card-body items-center gap-4">
-                <img src="/images/logo.png" alt="원재고" class="w-40 h-auto">
+                <img src="/logo_ver1.png" alt="원재고" class="w-40 h-auto">
                 <p class="login-tagline -mt-2">All your stock, in ONE</p>
 
                 <div class="w-full">

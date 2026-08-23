@@ -6,6 +6,8 @@ status: accepted
 
 메인 화면(대시보드) 재설계에서 각 상품 카드에 판매채널 칩(스마트스토어/에이블리/지그재그 등)을 붙이기로 했다. 그런데 이 프로젝트의 도메인 모델에는 "이 Product가 이 SalesChannel에서 팔린다"는 직접적인 연결이 없다 — `SalesChannel`은 셀러가 등록/관리하는 독립 엔티티이고, `Movement`가 어느 채널에서 발생했는지 태그로만 기록한다([CONTEXT.md](../../CONTEXT.md) 참고).
 
+> 이후 대시보드를 다른 목업(mockupMain.png) 기준으로 다시 만들면서, 이 ADR이 다루는 상품 카드 목록(및 채널 칩)은 "빠른 작업" 아래 영역으로 통째로 비워졌다 — 나중에 그 영역을 다시 채울 때 이 ADR의 결정(셀러의 전체 등록 채널을 그대로 보여준다)을 그대로 이어가거나 재검토하면 된다. `HomeController`는 지금 `salesChannels`/`productRows`를 계산하지 않는다.
+
 ## Considered Options
 
 - **Movement 이력에서 실제 거래된 채널만 표시**: 가장 정확하지만, 아직 입출고 기록이 없는 신규 상품은 칩이 하나도 안 뜬다. 상품마다 다른 조회 쿼리(변형별 Movement distinct channel)가 필요해 구현 비용도 크다.

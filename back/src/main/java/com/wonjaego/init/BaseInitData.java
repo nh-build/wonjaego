@@ -15,6 +15,7 @@ import com.wonjaego.product.ProductVariant;
 import com.wonjaego.product.ProductVariantEditForm;
 import com.wonjaego.product.ProductVariantService;
 import java.math.BigDecimal;
+import java.util.ArrayList;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.boot.ApplicationArguments;
@@ -50,8 +51,7 @@ public class BaseInitData implements ApplicationRunner {
         salesChannelService.create(memberId, channelForm("지그재그"));
 
         Product tshirt = productService.create(memberId,
-                productForm("베이직 반팔 티셔츠", new BigDecimal("19900"),
-                        optionGroup("색상", "블랙, 화이트"), optionGroup("사이즈", "S, M")));
+                productForm("베이직 반팔 티셔츠", new BigDecimal("19900"), "색상", "블랙, 화이트", "사이즈", "S, M"));
         Product bag = productService.create(memberId,
                 productForm("레더 크로스백", new BigDecimal("89000")));
 
@@ -88,18 +88,23 @@ public class BaseInitData implements ApplicationRunner {
         return form;
     }
 
-    private ProductCreateForm.OptionGroupInput optionGroup(String name, String valuesText) {
-        ProductCreateForm.OptionGroupInput input = new ProductCreateForm.OptionGroupInput();
-        input.setName(name);
-        input.setValuesText(valuesText);
-        return input;
-    }
-
-    private ProductCreateForm productForm(String name, BigDecimal price, ProductCreateForm.OptionGroupInput... optionGroups) {
+    // Stock intentionally left at 0 here (stocksJson omitted) — the explicit
+    // movementService.record(...) calls below are what give these variants their stock,
+    // to keep demonstrating the Movement-driven audit trail rather than initial-stock-at-
+    // registration for this particular seed data. groupNameAndValues is name/valuesText
+    // pairs, e.g. "색상", "블랙, 화이트", "사이즈", "S, M" — may be empty for no options.
+    private ProductCreateForm productForm(String name, BigDecimal price, String... groupNameAndValues) {
         ProductCreateForm form = new ProductCreateForm();
         form.setName(name);
         form.setPrice(price);
-        form.setOptionGroups(List.of(optionGroups));
+        List<ProductCreateForm.OptionGroupInput> optionGroups = new ArrayList<>();
+        for (int i = 0; i + 1 < groupNameAndValues.length; i += 2) {
+            ProductCreateForm.OptionGroupInput input = new ProductCreateForm.OptionGroupInput();
+            input.setName(groupNameAndValues[i]);
+            input.setValuesText(groupNameAndValues[i + 1]);
+            optionGroups.add(input);
+        }
+        form.setOptionGroups(optionGroups);
         return form;
     }
 }

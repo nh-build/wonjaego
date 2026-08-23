@@ -79,7 +79,7 @@
                                 <tr th:each="movement : ${movements}">
                                     <td><span class="badge badge-ghost" th:text="${movement.type.label}"></span></td>
                                     <td th:text="${#strings.isEmpty(movement.variant.optionLabel)} ? '-' : ${movement.variant.optionLabel}"></td>
-                                    <td th:text="${movement.salesChannel.name}"></td>
+                                    <td th:text="${movement.salesChannel != null} ? ${movement.salesChannel.name} : '-'"></td>
                                     <td th:text="${movement.quantityChange}"></td>
                                     <td th:text="${movement.memo}"></td>
                                     <td class="text-base-content/60 text-sm" th:text="${movement.createdAt}"></td>

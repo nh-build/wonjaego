@@ -1,10 +1,8 @@
 package com.wonjaego.dashboard;
 
 import static org.hamcrest.Matchers.containsString;
-import static org.hamcrest.Matchers.not;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.model;
@@ -20,7 +18,6 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.context.SpringBootTest.WebEnvironment;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.mock.web.MockHttpSession;
-import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
@@ -85,18 +82,14 @@ class DashboardTest {
     }
 
     @Test
-    void 상품_수와_각_상품의_재고가_표시된다() throws Exception {
+    void 상품_수가_요약_타일에_표시된다() throws Exception {
         MockHttpSession session = AuthTestSupport.signUpAndLogin(mockMvc, "seller1", "password123", "가게1");
         createStockedVariant(session, "상품A", "10");
         createStockedVariant(session, "상품B", "20");
 
         mockMvc.perform(get("/").session(session))
                 .andExpect(status().isOk())
-                .andExpect(model().attribute("totalProductCount", 2))
-                .andExpect(content().string(containsString("상품A")))
-                .andExpect(content().string(containsString("재고 10")))
-                .andExpect(content().string(containsString("상품B")))
-                .andExpect(content().string(containsString("재고 20")));
+                .andExpect(model().attribute("totalProductCount", 2));
     }
 
     @Test
@@ -107,9 +100,7 @@ class DashboardTest {
 
         mockMvc.perform(get("/").session(session))
                 .andExpect(status().isOk())
-                .andExpect(model().attribute("lowStockVariantCount", 1L))
-                .andExpect(content().string(containsString("기본값초과")))
-                .andExpect(content().string(containsString("기본값이하")));
+                .andExpect(model().attribute("lowStockVariantCount", 1L));
     }
 
     @Test
@@ -121,30 +112,23 @@ class DashboardTest {
 
         mockMvc.perform(get("/").session(session))
                 .andExpect(status().isOk())
-                .andExpect(content().string(not(containsString("남의상품"))))
                 .andExpect(model().attribute("totalProductCount", 0));
     }
 
     @Test
-    void 사진이_있는_상품은_대시보드_카드에_썸네일_이미지로_보인다() throws Exception {
+    void 재고_부족_품절_타일은_필터된_상품_목록으로_연결되고_빠른_작업_카드는_해당_화면으로_연결된다() throws Exception {
         MockHttpSession session = AuthTestSupport.signUpAndLogin(mockMvc, "seller6", "password123", "가게6");
-        MockMultipartFile photo = new MockMultipartFile("photo", "photo.jpg", "image/jpeg", "fake-jpeg-bytes".getBytes());
-
-        mockMvc.perform(multipart("/products")
-                        .file(photo)
-                        .session(session).with(csrf())
-                        .param("name", "사진상품")
-                        .param("price", "1000"))
-                .andExpect(status().is3xxRedirection());
-
-        Long productId = productRepository.findAll().stream()
-                .filter(p -> p.getName().equals("사진상품"))
-                .findFirst()
-                .orElseThrow()
-                .getId();
 
         mockMvc.perform(get("/").session(session))
                 .andExpect(status().isOk())
-                .andExpect(content().string(containsString("/products/" + productId + "/photo")));
+                .andExpect(content().string(containsString("href=\"/products?stock=low\"")))
+                .andExpect(content().string(containsString("href=\"/products?stock=out\"")))
+                .andExpect(content().string(containsString("href=\"/movements/new?type=INBOUND\"")))
+                .andExpect(content().string(containsString("href=\"/movements/new?type=SALE\"")))
+                .andExpect(content().string(containsString("href=\"/products#product-list\"")))
+                .andExpect(content().string(containsString("입고하기")))
+                .andExpect(content().string(containsString("출고하기")))
+                .andExpect(content().string(containsString("상품 등록")))
+                .andExpect(content().string(containsString("상품 목록")));
     }
 }

@@ -59,8 +59,6 @@ class HomeControllerTest {
                 .andExpect(view().name("dashboard/index"))
                 .andExpect(model().attribute("totalProductCount", 1))
                 .andExpect(model().attribute("lowStockVariantCount", 1L))
-                .andExpect(model().attribute("outOfStockVariantCount", 1L))
-                .andExpect(content().string(containsString("런닝화")))
-                .andExpect(content().string(containsString("재고 0")));
+                .andExpect(model().attribute("outOfStockVariantCount", 1L));
     }
 }

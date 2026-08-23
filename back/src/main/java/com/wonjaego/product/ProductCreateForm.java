@@ -2,6 +2,7 @@ package com.wonjaego.product;
 
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
 import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
@@ -19,32 +20,28 @@ public class ProductCreateForm {
     @NotNull
     private BigDecimal price;
 
-    // Optional — left null on a plain (non-multipart) submission and on a multipart one
-    // where the user didn't pick a file.
     private MultipartFile photo;
 
-    // Pre-populated with empty slots (rather than left empty) so the registration form can
-    // render a fixed number of th:field-bound rows — Thymeleaf/Spring read indexed nested
-    // properties by index when displaying a form, and an empty list has no index 0 to read.
-    public static final int MAX_OPTION_GROUPS = 5;
+    // Submitted as indexed request params (optionGroups[0].name, optionGroups[0].valuesText,
+    // optionGroups[1].name, ...) by dynamically added/removed rows on the registration
+    // screen — Spring's binder auto-grows this list from those indexed params, so it starts
+    // empty rather than pre-populated with fixed slots.
+    @Size(max = 20, message = "옵션은 최대 20개까지 추가할 수 있습니다.")
+    private List<OptionGroupInput> optionGroups = new ArrayList<>();
 
-    private List<OptionGroupInput> optionGroups = emptyOptionGroupSlots();
-
-    private static List<OptionGroupInput> emptyOptionGroupSlots() {
-        List<OptionGroupInput> slots = new ArrayList<>();
-        for (int i = 0; i < MAX_OPTION_GROUPS; i++) {
-            slots.add(new OptionGroupInput());
-        }
-        return slots;
-    }
+    // JSON array of non-negative integers, one per generated combination, in the same order
+    // the combinations are generated server-side (first option group outermost, matching how
+    // the registration screen renders and submits them). Blank/null is treated as "all zero"
+    // for however many combinations end up being generated.
+    private String stocksJson;
 
     @Getter
     @Setter
     public static class OptionGroupInput {
 
-        // Both name and valuesText must be filled for this slot to become a real
-        // OptionGroup — a slot left blank (e.g. an unused row in a fixed-size form) is
-        // silently ignored rather than rejected, since it just means "not used".
+        // Both name and valuesText must be filled for this row to become a real
+        // OptionGroup — a row left blank (e.g. added then never filled in) is silently
+        // ignored rather than rejected, since it just means "not used".
         private String name;
         private String valuesText;
     }

@@ -27,9 +27,11 @@ public class MovementController {
     @GetMapping("/movements/new")
     public String newForm(@AuthenticationPrincipal MemberPrincipal principal,
                            @RequestParam(required = false) Long variantId,
+                           @RequestParam(required = false) MovementType type,
                            Model model) {
         MovementForm form = new MovementForm();
         form.setVariantId(variantId);
+        form.setType(type);
         model.addAttribute("form", form);
         addFormOptions(principal, model);
         return "movements/new";

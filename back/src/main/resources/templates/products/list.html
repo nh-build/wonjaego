@@ -14,6 +14,10 @@
             <div class="card bg-base-200 shadow-sm rounded-3xl">
                 <div class="card-body">
                     <form th:action="@{/products}" th:object="${form}" method="post" enctype="multipart/form-data" class="flex flex-col gap-5">
+                        <div th:if="${#fields.hasGlobalErrors()}" class="alert alert-error text-sm">
+                            <span th:each="err : ${#fields.globalErrors()}" th:text="${err}"></span>
+                        </div>
+
                         <div class="flex flex-col gap-1">
                             <label class="label" for="photo">상품 사진 (선택)</label>
                             <label for="photo"
@@ -70,21 +74,41 @@
                         </div>
 
                         <fieldset class="fieldset border border-base-300 rounded-2xl p-4">
-                            <legend class="fieldset-legend px-2">옵션 그룹 (선택, 최대 5개)</legend>
-                            <p class="text-sm text-base-content/60 mb-3">값은 콤마로 구분해 입력하세요. 예: 블랙, 화이트</p>
-                            <div id="option-rows">
-                                <div th:each="i : ${#numbers.sequence(0, maxOptionGroups - 1)}"
-                                     th:classappend="${i} > 0 ? 'hidden' : ''"
-                                     class="option-row flex gap-2 mb-2">
-                                    <input type="text" th:field="*{optionGroups[__${i}__].name}"
-                                           placeholder="예: 색상" class="input input-bordered input-sm flex-1 min-w-0">
-                                    <input type="text" th:field="*{optionGroups[__${i}__].valuesText}"
-                                           placeholder="예: 블랙, 화이트" class="input input-bordered input-sm flex-1 min-w-0">
-                                    <button type="button" class="btn btn-ghost btn-sm btn-square shrink-0 option-row-remove"
-                                            aria-label="옵션 줄 지우기">✕</button>
-                                </div>
+                            <legend class="fieldset-legend px-2">옵션 &amp; 재고 (선택)</legend>
+
+                            <div class="flex items-center justify-between mb-2">
+                                <label class="label">옵션</label>
+                                <span class="text-xs text-base-content/50">옵션명 자유 입력 · 수정 가능</span>
                             </div>
-                            <button type="button" id="option-add-button" class="btn btn-outline btn-sm mt-1">+ 옵션 추가</button>
+                            <div id="option-rows" class="flex flex-col gap-2"></div>
+                            <button type="button" id="option-add-button"
+                                    class="btn btn-outline btn-sm border-dashed w-full mt-2">+ 옵션 추가</button>
+                            <p class="text-xs text-base-content/50 mt-1">※ 옵션명을 '기장·핏·소재' 등 원하는 대로 바꿀 수 있어요</p>
+
+                            <div class="flex items-center justify-between mt-4 mb-2">
+                                <p class="font-medium text-sm">옵션별 재고</p>
+                                <span class="text-xs text-base-content/50">조합 자동 생성</span>
+                            </div>
+
+                            <div id="variant-stock-section" class="hidden flex flex-col gap-2">
+                                <div id="variant-stock-rows" class="border border-base-300 rounded-box divide-y divide-base-300 overflow-hidden bg-base-100"></div>
+                            </div>
+
+                            <div id="single-stock-section" class="flex flex-col gap-1">
+                                <label class="label" for="single-stock-input">총 재고</label>
+                                <input type="number" id="single-stock-input" min="0" value="0"
+                                       class="input input-bordered input-sm w-full">
+                            </div>
+
+                            <div id="total-stock-summary" class="hidden flex flex-col gap-1">
+                                <div class="flex items-center justify-between mt-3 p-3 rounded-box bg-primary/10">
+                                    <span class="font-medium text-sm">총 재고</span>
+                                    <span id="total-stock-display" class="font-bold">0개</span>
+                                </div>
+                                <p class="text-xs text-base-content/50 mt-1">※ 재고 0인 조합은 자동으로 품절 처리돼요</p>
+                            </div>
+
+                            <input type="hidden" id="stocks-json-input" th:field="*{stocksJson}">
                         </fieldset>
 
                         <button type="submit" class="btn btn-primary rounded-full mt-2">저장하기</button>
@@ -93,8 +117,15 @@
             </div>
         </section>
 
-        <section>
-            <h3 class="text-lg font-semibold mb-3">상품 목록</h3>
+        <section id="product-list">
+            <div class="flex items-center justify-between mb-3">
+                <h3 class="text-lg font-semibold">상품 목록</h3>
+                <div th:if="${stockFilter == 'low' or stockFilter == 'out'}" class="flex items-center gap-2 text-sm">
+                    <span class="badge badge-warning badge-outline"
+                          th:text="${stockFilter == 'low'} ? '재고 부족만 보는 중' : '품절만 보는 중'"></span>
+                    <a href="/products" class="link">필터 해제</a>
+                </div>
+            </div>
             <div class="card bg-base-200 shadow-sm">
                 <div class="card-body p-4">
                     <div class="overflow-x-auto">
@@ -138,52 +169,264 @@
 
     <footer th:replace="~{fragments/layout :: footer}"></footer>
 
+    <script th:inline="javascript">
+        // On a validation-error redisplay, Spring re-binds the submitted optionGroups/
+        // stocksJson back onto the form — these carry that submitted state back into the
+        // JS so a rejected registration doesn't wipe out everything the user typed.
+        var INITIAL_OPTION_GROUPS = /*[[${form.optionGroups}]]*/ [];
+        var INITIAL_STOCKS_JSON = /*[[${form.stocksJson}]]*/ null;
+    </script>
     <script th:inline="none">
         (function () {
-            var rows = Array.prototype.slice.call(document.querySelectorAll('#option-rows .option-row'));
-            var addButton = document.getElementById('option-add-button');
-            if (!addButton || rows.length === 0) {
+            var optionRowsContainer = document.getElementById('option-rows');
+            var addOptionButton = document.getElementById('option-add-button');
+            var variantStockSection = document.getElementById('variant-stock-section');
+            var variantStockRows = document.getElementById('variant-stock-rows');
+            var singleStockSection = document.getElementById('single-stock-section');
+            var singleStockInput = document.getElementById('single-stock-input');
+            var totalStockSummary = document.getElementById('total-stock-summary');
+            var totalStockDisplay = document.getElementById('total-stock-display');
+            var stocksJsonInput = document.getElementById('stocks-json-input');
+            if (!optionRowsContainer || !addOptionButton || !variantStockSection || !variantStockRows
+                    || !singleStockSection || !singleStockInput || !totalStockSummary || !totalStockDisplay
+                    || !stocksJsonInput) {
                 return;
             }
 
-            function firstHiddenRow() {
-                for (var i = 0; i < rows.length; i++) {
-                    if (rows[i].classList.contains('hidden')) {
-                        return rows[i];
+            var rows = [];
+            // Keyed by the combination's values joined together, so previously entered
+            // stock numbers survive re-rendering the table when an unrelated row changes.
+            var stockByComboKey = {};
+
+            function parseValuesText(text) {
+                var seen = {};
+                var values = [];
+                (text || '').split(',').forEach(function (raw) {
+                    var value = raw.trim();
+                    if (value && !seen[value]) {
+                        seen[value] = true;
+                        values.push(value);
                     }
-                }
-                return null;
-            }
-
-            function updateAddButtonState() {
-                addButton.disabled = firstHiddenRow() === null;
-            }
-
-            addButton.addEventListener('click', function () {
-                var row = firstHiddenRow();
-                if (row) {
-                    row.classList.remove('hidden');
-                }
-                updateAddButtonState();
-            });
-
-            rows.forEach(function (row, index) {
-                var removeButton = row.querySelector('.option-row-remove');
-                var inputs = row.querySelectorAll('input');
-                removeButton.addEventListener('click', function () {
-                    inputs.forEach(function (input) {
-                        input.value = '';
-                    });
-                    // The first row always stays visible — it's the only guaranteed-present
-                    // slot; the rest go back into the pool "+" can reveal again.
-                    if (index > 0) {
-                        row.classList.add('hidden');
-                    }
-                    updateAddButtonState();
                 });
-            });
+                return values;
+            }
 
-            updateAddButtonState();
+            // Rows with a blank name or no parsed values are treated as unused (matching
+            // the server's skip-blank-row rule) — they don't take part in the combination.
+            function activeGroups() {
+                return rows.map(function (row) {
+                    return {name: row.nameInput.value.trim(), values: parseValuesText(row.valuesInput.value)};
+                }).filter(function (group) {
+                    return group.name.length > 0 && group.values.length > 0;
+                });
+            }
+
+            function buildCombinations() {
+                var groups = activeGroups();
+                if (groups.length === 0) {
+                    return [];
+                }
+                var combos = [[]];
+                groups.forEach(function (group) {
+                    var next = [];
+                    combos.forEach(function (combo) {
+                        group.values.forEach(function (value) {
+                            next.push(combo.concat([value]));
+                        });
+                    });
+                    combos = next;
+                });
+                return combos.map(function (values) {
+                    // JSON.stringify escapes each element, so two distinct value arrays
+                    // can't collide onto the same key the way a plain-delimiter join could
+                    // if a user's option value happened to contain the delimiter itself.
+                    return {label: values.join(' / '), key: JSON.stringify(values)};
+                });
+            }
+
+            function reindexRows() {
+                rows.forEach(function (row, index) {
+                    row.nameInput.name = 'optionGroups[' + index + '].name';
+                    row.valuesInput.name = 'optionGroups[' + index + '].valuesText';
+                });
+            }
+
+            function renderOptionRows() {
+                while (optionRowsContainer.firstChild) {
+                    optionRowsContainer.removeChild(optionRowsContainer.firstChild);
+                }
+                rows.forEach(function (row) {
+                    optionRowsContainer.appendChild(row.container);
+                });
+            }
+
+            function addRow(initialName, initialValues, focusNew) {
+                var container = document.createElement('div');
+                container.className = 'flex gap-2 items-center';
+
+                var nameInput = document.createElement('input');
+                nameInput.type = 'text';
+                nameInput.placeholder = '예: 색상';
+                nameInput.value = initialName || '';
+                nameInput.className = 'input input-bordered input-sm w-24 shrink-0';
+
+                var valuesInput = document.createElement('input');
+                valuesInput.type = 'text';
+                valuesInput.placeholder = '예: 블랙, 화이트';
+                valuesInput.value = initialValues || '';
+                valuesInput.className = 'input input-bordered input-sm flex-1 min-w-0';
+
+                var removeButton = document.createElement('button');
+                removeButton.type = 'button';
+                removeButton.className = 'btn btn-ghost btn-sm btn-square shrink-0';
+                removeButton.setAttribute('aria-label', '옵션 줄 삭제');
+                removeButton.textContent = '✕';
+
+                container.appendChild(nameInput);
+                container.appendChild(valuesInput);
+                container.appendChild(removeButton);
+
+                var row = {container: container, nameInput: nameInput, valuesInput: valuesInput};
+
+                nameInput.addEventListener('input', renderCombinationsAndTotals);
+                valuesInput.addEventListener('input', renderCombinationsAndTotals);
+                removeButton.addEventListener('click', function () {
+                    rows = rows.filter(function (r) {
+                        return r !== row;
+                    });
+                    reindexRows();
+                    renderOptionRows();
+                    renderCombinationsAndTotals();
+                });
+
+                rows.push(row);
+                reindexRows();
+                renderOptionRows();
+                if (focusNew !== false) {
+                    nameInput.focus();
+                }
+            }
+
+            function buildStockRow(combo) {
+                var row = document.createElement('div');
+                row.className = 'flex items-center justify-between gap-2 px-3 py-2';
+
+                var left = document.createElement('div');
+                left.className = 'flex items-center gap-2';
+                var label = document.createElement('span');
+                label.className = 'font-medium text-sm';
+                label.textContent = combo.label;
+                left.appendChild(label);
+
+                var badge = document.createElement('span');
+                badge.className = 'badge badge-error badge-outline badge-sm hidden';
+                badge.textContent = '품절';
+                left.appendChild(badge);
+
+                var right = document.createElement('div');
+                right.className = 'flex items-center gap-2';
+                var stockLabel = document.createElement('span');
+                stockLabel.className = 'text-xs text-base-content/50';
+                stockLabel.textContent = '재고';
+                var stockInput = document.createElement('input');
+                stockInput.type = 'number';
+                stockInput.min = '0';
+                stockInput.value = String(stockByComboKey[combo.key] || 0);
+                stockInput.className = 'input input-bordered input-sm w-20';
+                stockInput.addEventListener('input', function () {
+                    var quantity = parseInt(stockInput.value, 10);
+                    if (isNaN(quantity) || quantity < 0) {
+                        quantity = 0;
+                    }
+                    stockByComboKey[combo.key] = quantity;
+                    badge.classList.toggle('hidden', quantity !== 0);
+                    updateTotalsAndHiddenFields();
+                });
+                badge.classList.toggle('hidden', (stockByComboKey[combo.key] || 0) !== 0);
+                right.appendChild(stockLabel);
+                right.appendChild(stockInput);
+
+                row.appendChild(left);
+                row.appendChild(right);
+                return row;
+            }
+
+            function updateTotalsAndHiddenFields() {
+                var combos = buildCombinations();
+                var total;
+                var stocks;
+                if (combos.length === 0) {
+                    var single = parseInt(singleStockInput.value, 10);
+                    if (isNaN(single) || single < 0) {
+                        single = 0;
+                    }
+                    total = single;
+                    stocks = [single];
+                } else {
+                    stocks = combos.map(function (combo) {
+                        return stockByComboKey[combo.key] || 0;
+                    });
+                    total = stocks.reduce(function (sum, s) {
+                        return sum + s;
+                    }, 0);
+                }
+                totalStockDisplay.textContent = total + '개';
+                stocksJsonInput.value = JSON.stringify(stocks);
+            }
+
+            function renderCombinationsAndTotals() {
+                var combos = buildCombinations();
+                while (variantStockRows.firstChild) {
+                    variantStockRows.removeChild(variantStockRows.firstChild);
+                }
+                if (combos.length === 0) {
+                    variantStockSection.classList.add('hidden');
+                    singleStockSection.classList.remove('hidden');
+                    // No combinations -> the single-stock input above already *is* "총 재고",
+                    // so this separate auto-summed readout would just duplicate it.
+                    totalStockSummary.classList.add('hidden');
+                } else {
+                    variantStockSection.classList.remove('hidden');
+                    singleStockSection.classList.add('hidden');
+                    totalStockSummary.classList.remove('hidden');
+                    combos.forEach(function (combo) {
+                        variantStockRows.appendChild(buildStockRow(combo));
+                    });
+                }
+                updateTotalsAndHiddenFields();
+            }
+
+            addOptionButton.addEventListener('click', function () {
+                addRow();
+            });
+            singleStockInput.addEventListener('input', updateTotalsAndHiddenFields);
+
+            // Rebuild whatever the user had entered before a validation error redisplayed
+            // this form (e.g. a stock-count mismatch) — otherwise the whole option/stock
+            // section would silently reset and the user would have to retype it all.
+            (INITIAL_OPTION_GROUPS || []).forEach(function (group) {
+                if (group && (group.name || group.valuesText)) {
+                    addRow(group.name, group.valuesText, false);
+                }
+            });
+            if (INITIAL_STOCKS_JSON) {
+                try {
+                    var initialStocks = JSON.parse(INITIAL_STOCKS_JSON);
+                    var combos = buildCombinations();
+                    if (combos.length > 0 && initialStocks.length === combos.length) {
+                        combos.forEach(function (combo, index) {
+                            stockByComboKey[combo.key] = initialStocks[index] || 0;
+                        });
+                    } else if (combos.length === 0 && initialStocks.length === 1) {
+                        singleStockInput.value = initialStocks[0];
+                    }
+                } catch (e) {
+                    // Malformed stocksJson never reaches here in practice — the server
+                    // already rejects it before this page re-renders.
+                }
+            }
+
+            renderCombinationsAndTotals();
         })();
     </script>
     <script th:inline="none">

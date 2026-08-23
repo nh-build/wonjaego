@@ -7,6 +7,8 @@ import com.wonjaego.storage.FileStorage;
 import jakarta.validation.Valid;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import org.springframework.core.io.Resource;
 import org.springframework.http.MediaType;
@@ -21,6 +23,7 @@ import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseBody;
 
 @Controller
@@ -34,11 +37,29 @@ public class ProductController {
     private final NameSuggestionClient nameSuggestionClient;
 
     @GetMapping("/products")
-    public String list(@AuthenticationPrincipal MemberPrincipal principal, Model model) {
-        model.addAttribute("products", productService.listOwned(principal.getMemberId()));
+    public String list(@AuthenticationPrincipal MemberPrincipal principal,
+                        @RequestParam(required = false) String stock,
+                        Model model) {
+        model.addAttribute("products", filteredProducts(principal.getMemberId(), stock));
+        model.addAttribute("stockFilter", stock);
         model.addAttribute("form", new ProductCreateForm());
-        model.addAttribute("maxOptionGroups", ProductCreateForm.MAX_OPTION_GROUPS);
         return "products/list";
+    }
+
+    // Backs the dashboard's "재고 부족"/"품절" tiles — "stock" is only ever "low" or "out"
+    // from those links; any other value (missing, typo, tampered) falls back to the
+    // unfiltered list rather than silently showing an empty/wrong subset.
+    private List<Product> filteredProducts(Long memberId, String stock) {
+        List<Product> products = productService.listOwned(memberId);
+        if (!"low".equals(stock) && !"out".equals(stock)) {
+            return products;
+        }
+        Map<Long, List<ProductVariant>> variantsByProductId = productVariantService.listOwned(memberId).stream()
+                .collect(Collectors.groupingBy(variant -> variant.getProduct().getId()));
+        return products.stream()
+                .filter(product -> variantsByProductId.getOrDefault(product.getId(), List.of()).stream()
+                        .anyMatch("out".equals(stock) ? v -> v.getStockQuantity() == 0 : ProductVariant::isLowStock))
+                .toList();
     }
 
     @PostMapping("/products")
@@ -52,10 +73,11 @@ public class ProductController {
                 return "redirect:/products";
             } catch (InvalidPhotoException e) {
                 bindingResult.rejectValue("photo", "invalid", e.getMessage());
+            } catch (InvalidStockDataException e) {
+                bindingResult.reject("invalid", e.getMessage());
             }
         }
         model.addAttribute("products", productService.listOwned(principal.getMemberId()));
-        model.addAttribute("maxOptionGroups", ProductCreateForm.MAX_OPTION_GROUPS);
         return "products/list";
     }
 
@@ -140,7 +162,7 @@ public class ProductController {
             return "redirect:/products";
         } catch (ProductHasMovementsException e) {
             model.addAttribute("error", e.getMessage());
-            return list(principal, model);
+            return list(principal, null, model);
         }
     }
 }

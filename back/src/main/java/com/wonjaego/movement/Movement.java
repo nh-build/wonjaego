@@ -25,8 +25,11 @@ public class Movement extends BaseEntity {
     @JoinColumn(name = "product_variant_id", nullable = false)
     private ProductVariant variant;
 
+    // Nullable — movements with no channel (initial stock at registration, stocktaking
+    // adjustments, etc.) are legitimate; not every stock change is tied to a sale/return
+    // on a specific channel.
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "sales_channel_id", nullable = false)
+    @JoinColumn(name = "sales_channel_id")
     private SalesChannel salesChannel;
 
     @Enumerated(EnumType.STRING)

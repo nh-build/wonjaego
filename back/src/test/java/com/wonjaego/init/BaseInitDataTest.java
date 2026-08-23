@@ -119,15 +119,17 @@ class BaseInitDataTest {
 
         MockHttpSession session = loginAsSampleMember();
 
-        // 상품 2개(티셔츠, 가방)가 대시보드 상품 카드 목록에 보인다.
-        // 티셔츠의 상품별 재고 배지는 변형 4개 합계: 블랙/S 5(입고 20 - 판매 15) + 나머지 0 = 5.
-        // 가방(단일 변형)의 재고 배지는 8(입고) + 1(반품) = 9.
+        // 대시보드 요약 타일: 상품 2개(티셔츠, 가방). 티셔츠 변형 4개는 모두 재고부족 기준
+        // 이하(블랙/S 5<=임계치6, 나머지 0<=기본임계치5)라 재고부족 4건, 그중 재고 0인
+        // 3건(블랙/M, 화이트/S, 화이트/M)이 품절. 가방(재고 9)은 둘 다 해당 없음.
         mockMvc.perform(get("/").session(session))
                 .andExpect(status().isOk())
-                .andExpect(content().string(containsString("베이직 반팔 티셔츠")))
-                .andExpect(content().string(containsString("레더 크로스백")))
-                .andExpect(content().string(containsString("재고 5")))
-                .andExpect(content().string(containsString("재고 9")));
+                .andExpect(content().string(containsString("전체 상품")))
+                .andExpect(content().string(containsString("재고 부족")))
+                .andExpect(content().string(containsString("품절")))
+                .andExpect(content().string(containsString("tile-value\">2<")))
+                .andExpect(content().string(containsString("tile-value warn\">4<")))
+                .andExpect(content().string(containsString("tile-value warn\">3<")));
 
         mockMvc.perform(get("/products").session(session))
                 .andExpect(status().isOk())

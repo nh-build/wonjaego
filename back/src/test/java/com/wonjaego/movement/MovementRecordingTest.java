@@ -84,6 +84,15 @@ class MovementRecordingTest {
     }
 
     @Test
+    void 재고_기록_화면에_type_쿼리파라미터를_주면_구분이_미리_선택된다() throws Exception {
+        MockHttpSession session = AuthTestSupport.signUpAndLogin(mockMvc, "seller15", "password123", "가게15");
+
+        mockMvc.perform(get("/movements/new").param("type", "INBOUND").session(session))
+                .andExpect(status().isOk())
+                .andExpect(content().string(containsString("value=\"INBOUND\" selected=\"selected\"")));
+    }
+
+    @Test
     void 입고를_기록하면_변형의_총재고가_증가한다() throws Exception {
         MockHttpSession session = AuthTestSupport.signUpAndLogin(mockMvc, "seller1", "password123", "가게1");
         Long variantId = createVariant(session, "상품A");
