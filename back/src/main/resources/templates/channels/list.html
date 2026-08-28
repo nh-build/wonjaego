@@ -1,64 +1,117 @@
 <!DOCTYPE html>
-<html xmlns:th="http://www.thymeleaf.org" data-theme="wonjaego">
-<head th:replace="~{fragments/layout :: head('판매 채널 관리')}"></head>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>판매채널 - 원재고</title>
+
+    <link rel="manifest" href="/manifest.json">
+    <meta name="theme-color" content="#F7FBFE">
+    <link rel="icon" href="/icons/icon-192.png">
+    <link rel="apple-touch-icon" href="/icons/icon-192.png">
+
+    <link rel="stylesheet" as="style" crossorigin
+          href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
+
+    <style>
+        :root {
+            --color-bg: #F7FBFE;
+            --color-card: #FFFFFF;
+            --color-card-border: #E8EEF4;
+            --color-tile: #E4F0FA;
+            --color-accent: #D2E7F5;
+            --color-button-bg: #C5E1F2;
+            --color-button-text: #2B3A45;
+            --color-text: #2B3A45;
+            --color-text-muted: #8A97A3;
+            --color-ok-text: #5AA06E;
+        }
+
+        * { box-sizing: border-box; }
+
+        html, body {
+            margin: 0;
+            padding: 0;
+            background: var(--color-bg);
+            color: var(--color-text);
+            font-family: 'Pretendard', system-ui, sans-serif;
+        }
+
+        a { color: inherit; text-decoration: none; }
+        button { font-family: inherit; }
+
+        .page {
+            max-width: 480px;
+            margin: 0 auto;
+            min-height: 100vh;
+            padding: 20px 20px 40px;
+        }
+
+        .page-subtitle { margin: 16px 2px 20px; font-size: 0.85rem; color: var(--color-text-muted); }
+
+        .channel-cards { display: flex; flex-direction: column; gap: 14px; }
+
+        .channel-card {
+            background: var(--color-card); border: 1px solid var(--color-card-border);
+            border-radius: 18px; padding: 18px 20px; display: flex; align-items: center; justify-content: space-between; gap: 10px;
+        }
+
+        .channel-name { font-weight: 700; font-size: 1.05rem; }
+
+        .channel-card-actions { display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
+
+        .status-dot {
+            width: 8px; height: 8px; border-radius: 999px; background: var(--color-card-border); flex-shrink: 0;
+        }
+
+        .status-dot.connected { background: var(--color-ok-text); }
+
+        .channel-action-button {
+            border: none; border-radius: 999px; padding: 10px 18px; font-size: 0.9rem; font-weight: 700;
+            cursor: pointer; white-space: nowrap;
+        }
+
+        .channel-action-button.connect { background: var(--color-button-bg); color: var(--color-button-text); }
+        .channel-action-button.manage { background: var(--color-tile); color: var(--color-button-text); }
+
+        .channel-action-button.unsupported {
+            background: var(--color-tile); color: var(--color-text-muted); cursor: not-allowed;
+        }
+
+        .connect-hint {
+            margin-top: 20px; background: var(--color-tile); border-radius: 16px; padding: 16px;
+        }
+
+        .connect-hint-title { font-weight: 700; font-size: 0.9rem; }
+        .connect-hint-detail { margin-top: 4px; font-size: 0.8rem; color: var(--color-text-muted); }
+    </style>
+</head>
 <body>
-    <header th:replace="~{fragments/layout :: appbar('판매 채널 관리', '/')}"></header>
+    <div th:replace="~{fragments/layout :: appbar('판매채널', true, null, null, false)}"></div>
+    <div class="page">
+        <p class="page-subtitle">① 채널을 먼저 연동하세요</p>
 
-    <main class="flex-1 container mx-auto max-w-screen-md px-4 py-8">
-        <h2 class="text-2xl font-bold mb-6">판매 채널 관리</h2>
-
-        <div th:if="${error}" class="alert alert-error mb-6">
-            <span th:text="${error}"></span>
+        <div class="channel-cards">
+            <div class="channel-card" th:each="item : ${items}">
+                <span class="channel-name" th:text="${item.channelType().label}"></span>
+                <div class="channel-card-actions">
+                    <span th:if="${item.channelType().integrationSupported}" class="status-dot"
+                          th:classappend="${item.connected()} ? 'connected' : ''"></span>
+                    <a th:if="${item.channelType().integrationSupported and item.connected()}"
+                       th:href="@{'/channels/' + ${item.credentialId()}}"
+                       class="channel-action-button manage">관리</a>
+                    <a th:if="${item.channelType().integrationSupported and !item.connected()}"
+                       href="/channels/connect" class="channel-action-button connect">연동하기</a>
+                    <span th:unless="${item.channelType().integrationSupported}"
+                          class="channel-action-button unsupported">준비중</span>
+                </div>
+            </div>
         </div>
 
-        <section class="mb-8">
-            <h3 class="text-lg font-semibold mb-3">채널 등록</h3>
-            <div class="card bg-base-200 shadow-sm">
-                <div class="card-body">
-                    <form th:action="@{/channels}" th:object="${form}" method="post" class="flex flex-col gap-4 sm:flex-row sm:items-end">
-                        <div class="flex flex-col gap-1 flex-1">
-                            <label class="label" for="name">채널 이름</label>
-                            <input id="name" type="text" th:field="*{name}" class="input input-bordered w-full">
-                            <span class="text-error text-sm" th:if="${#fields.hasErrors('name')}" th:errors="*{name}"></span>
-                        </div>
-                        <button type="submit" class="btn btn-primary">등록</button>
-                    </form>
-                </div>
-            </div>
-        </section>
-
-        <section>
-            <h3 class="text-lg font-semibold mb-3">채널 목록</h3>
-            <div class="card bg-base-200 shadow-sm">
-                <div class="card-body p-4">
-                    <div class="overflow-x-auto">
-                        <table class="table">
-                            <thead>
-                                <tr>
-                                    <th>채널 이름</th>
-                                    <th class="text-right">관리</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <tr th:each="channel : ${channels}">
-                                    <td class="font-medium" th:text="${channel.name}"></td>
-                                    <td class="text-right">
-                                        <div class="flex gap-2 justify-end">
-                                            <a th:href="@{'/channels/' + ${channel.id} + '/edit'}" class="btn btn-ghost btn-sm">수정</a>
-                                            <form th:action="@{'/channels/' + ${channel.id} + '/delete'}" method="post" class="inline">
-                                                <button type="submit" class="btn btn-ghost btn-sm text-error">삭제</button>
-                                            </form>
-                                        </div>
-                                    </td>
-                                </tr>
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            </div>
-        </section>
-    </main>
-
-    <footer th:replace="~{fragments/layout :: footer}"></footer>
+        <div class="connect-hint">
+            <p class="connect-hint-title">연동 후 관리화면에서 역할을 정해요.</p>
+            <p class="connect-hint-detail">상품 소스 / 주문 연동 중 선택</p>
+        </div>
+    </div>
 </body>
 </html>

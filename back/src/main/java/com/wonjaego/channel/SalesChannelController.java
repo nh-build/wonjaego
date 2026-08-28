@@ -18,14 +18,14 @@ public class SalesChannelController {
 
     private final SalesChannelService salesChannelService;
 
-    @GetMapping("/channels")
+    @GetMapping("/channels/tags")
     public String list(@AuthenticationPrincipal MemberPrincipal principal, Model model) {
         model.addAttribute("channels", salesChannelService.listOwned(principal.getMemberId()));
         model.addAttribute("form", new SalesChannelForm());
-        return "channels/list";
+        return "channels/tags";
     }
 
-    @PostMapping("/channels")
+    @PostMapping("/channels/tags")
     public String create(@AuthenticationPrincipal MemberPrincipal principal,
                           @Valid @ModelAttribute("form") SalesChannelForm form,
                           BindingResult bindingResult,
@@ -33,16 +33,16 @@ public class SalesChannelController {
         if (!bindingResult.hasErrors()) {
             try {
                 salesChannelService.create(principal.getMemberId(), form);
-                return "redirect:/channels";
+                return "redirect:/channels/tags";
             } catch (DuplicateChannelNameException e) {
                 bindingResult.rejectValue("name", "duplicate", e.getMessage());
             }
         }
         model.addAttribute("channels", salesChannelService.listOwned(principal.getMemberId()));
-        return "channels/list";
+        return "channels/tags";
     }
 
-    @GetMapping("/channels/{id}/edit")
+    @GetMapping("/channels/tags/{id}/edit")
     public String editForm(@AuthenticationPrincipal MemberPrincipal principal, @PathVariable Long id, Model model) {
         SalesChannel channel = salesChannelService.getOwned(principal.getMemberId(), id);
         model.addAttribute("form", SalesChannelForm.from(channel));
@@ -50,7 +50,7 @@ public class SalesChannelController {
         return "channels/edit";
     }
 
-    @PostMapping("/channels/{id}/edit")
+    @PostMapping("/channels/tags/{id}/edit")
     public String edit(@AuthenticationPrincipal MemberPrincipal principal,
                         @PathVariable Long id,
                         @Valid @ModelAttribute("form") SalesChannelForm form,
@@ -62,7 +62,7 @@ public class SalesChannelController {
         if (!bindingResult.hasErrors()) {
             try {
                 salesChannelService.update(principal.getMemberId(), id, form);
-                return "redirect:/channels";
+                return "redirect:/channels/tags";
             } catch (DuplicateChannelNameException e) {
                 bindingResult.rejectValue("name", "duplicate", e.getMessage());
             }
@@ -71,11 +71,11 @@ public class SalesChannelController {
         return "channels/edit";
     }
 
-    @PostMapping("/channels/{id}/delete")
+    @PostMapping("/channels/tags/{id}/delete")
     public String delete(@AuthenticationPrincipal MemberPrincipal principal, @PathVariable Long id, Model model) {
         try {
             salesChannelService.delete(principal.getMemberId(), id);
-            return "redirect:/channels";
+            return "redirect:/channels/tags";
         } catch (SalesChannelHasMovementsException e) {
             model.addAttribute("error", e.getMessage());
             return list(principal, model);

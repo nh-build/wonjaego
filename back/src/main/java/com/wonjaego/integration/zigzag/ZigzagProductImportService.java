@@ -40,6 +40,14 @@ public class ZigzagProductImportService {
     private static final String CHANNEL_NAME = "지그재그";
     private static final String IMPORT_MEMO = "채널 임포트(지그재그)";
 
+    // product_list는 확인 결과(2026-08-23) 인자를 하나도 받지 않는다 — 페이지네이션은 물론
+    // 날짜/판매상태/카테고리 같은 필터 인자도 공식 스키마(zigzag.kr/_openapi/openapi.graphql)에
+    // 전혀 없다. 실제 계정으로 호출해봐도 응답 헤더·바디 어디에도 total_count/cursor 등
+    // 다음 페이지를 가리키는 정보가 없고, 항상 최대 100건까지만 잘려서 온다(문서화되지 않은
+    // 서버 측 하드캡으로 보임) — 지그재그 파트너센터에 문의 중. 그때까지는 100건을 넘는 셀러의
+    // 경우 이 한계를 넘어설 방법이 없으므로, 정확히 캡에 걸린 것 같으면 로그로 경고한다.
+    private static final int KNOWN_PRODUCT_LIST_CAP = 100;
+
     // item_list appears at two nesting levels: ProductList.item_list (products) and
     // Product.item_list (그 상품의 품목/SKU). attribute_list carries the option name/value pair
     // per 품목 (Item), inventory.quantity is its 가용 재고, site_list its site별 가격.
@@ -117,7 +125,12 @@ public class ZigzagProductImportService {
             importProduct(memberId, member, channel, zigzagProduct);
             productCount++;
         }
+        channelCredentialService.recordImport(memberId, ChannelType.ZIGZAG, productCount);
         log.info("지그재그 상품 {}건 가져오기 완료. memberId={}", productCount, memberId);
+        if (productCount == KNOWN_PRODUCT_LIST_CAP) {
+            log.warn("지그재그 상품이 정확히 {}건 조회됨 — product_list의 (문서화되지 않은) 상한에 걸려 "
+                    + "실제로는 더 많은 상품이 있는데 잘렸을 수 있습니다. memberId={}", KNOWN_PRODUCT_LIST_CAP, memberId);
+        }
         return new ZigzagImportResult(productCount);
     }
 

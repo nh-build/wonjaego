@@ -12,9 +12,13 @@ import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.Comparator;
+import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
+import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Limit;
 import org.springframework.stereotype.Service;
@@ -58,6 +62,126 @@ public class ProductService {
     @Transactional(readOnly = true)
     public List<Product> search(Long memberId, String query) {
         return productRepository.findByMemberIdAndNameContainingIgnoreCase(memberId, query, Limit.of(20));
+    }
+
+    public static final int LIST_PAGE_SIZE = 20;
+
+    // Backs /products (list screen) both for the initial SSR render and the JSON the
+    // infinite-scroll JS polls for later pages — one query, one filter/sort pass, sliced
+    // in memory. Stock-state filtering and 재고순 sort both need per-variant aggregates
+    // (a product has no stock/price of its own, ADR 0008), so this loads every owned
+    // variant (with product + option groups/values already fetched) rather than querying
+    // the DB per page — the same all-at-once approach ProductController's stock-filter
+    // tiles already use. Fine at the scale this app runs at; would need a real paged/
+    // aggregate query if a seller's catalog grew into the thousands.
+    @Transactional(readOnly = true)
+    public ProductListPage listPage(Long memberId, String query, String stock, String sort, int page) {
+        List<ProductVariant> variants = productVariantRepository.findAllByMemberIdWithProductAndOptions(memberId);
+        Map<Long, List<ProductVariant>> variantsByProductId = variants.stream()
+                .collect(Collectors.groupingBy(v -> v.getProduct().getId(), LinkedHashMap::new, Collectors.toList()));
+
+        String normalizedQuery = query == null ? "" : query.trim().toLowerCase();
+        List<Product> products = variantsByProductId.values().stream()
+                .map(vs -> vs.get(0).getProduct())
+                .filter(p -> normalizedQuery.isEmpty() || p.getName().toLowerCase().contains(normalizedQuery))
+                .filter(p -> matchesStockFilter(stock, variantsByProductId.get(p.getId())))
+                .collect(Collectors.toCollection(ArrayList::new));
+
+        long importedCount = products.stream().filter(p -> p.getExternalChannelType() != null).count();
+
+        // Ties (e.g. several products created in the same instant, or all sitting at 0 stock)
+        // need a deterministic tiebreaker — otherwise re-running this sort on every page
+        // request could place the same product on two pages, or skip it, since List.sort
+        // is stable over the pre-sort order but that order itself has no guaranteed identity.
+        Comparator<Product> comparator = ("stock".equals(sort)
+                ? Comparator.comparingInt((Product p) -> totalStock(variantsByProductId.get(p.getId())))
+                : Comparator.comparing(Product::getCreatedAt, Comparator.reverseOrder()))
+                .thenComparing(Product::getId, Comparator.reverseOrder());
+        products.sort(comparator);
+
+        int safePage = Math.max(page, 0);
+        int fromIndex = Math.min(safePage * LIST_PAGE_SIZE, products.size());
+        int toIndex = Math.min(fromIndex + LIST_PAGE_SIZE, products.size());
+        List<ProductListItem> items = products.subList(fromIndex, toIndex).stream()
+                .map(p -> toListItem(p, variantsByProductId.get(p.getId())))
+                .toList();
+
+        return new ProductListPage(items, products.size(), toIndex < products.size(), importedCount);
+    }
+
+    // "low"/"out" mirror the dashboard summary tiles' own definitions — "low" (isLowStock())
+    // already includes zero-stock variants, so a product with a sold-out combo shows up
+    // under both filters, matching what the tile counts on the home screen already imply.
+    private boolean matchesStockFilter(String stock, List<ProductVariant> variants) {
+        if (!"low".equals(stock) && !"out".equals(stock)) {
+            return true;
+        }
+        return variants.stream().anyMatch("out".equals(stock) ? v -> v.getStockQuantity() == 0 : ProductVariant::isLowStock);
+    }
+
+    private int totalStock(List<ProductVariant> variants) {
+        return variants.stream().mapToInt(ProductVariant::getStockQuantity).sum();
+    }
+
+    private ProductListItem toListItem(Product product, List<ProductVariant> variants) {
+        String thumbnailUrl = product.getPhotoKey() != null
+                ? "/products/" + product.getId() + "/photo"
+                : product.getExternalImageUrl();
+        int totalStock = totalStock(variants);
+        String stockStyle;
+        String stockLabel;
+        if (totalStock == 0) {
+            stockStyle = "out";
+            stockLabel = "품절";
+        } else if (variants.stream().anyMatch(ProductVariant::isLowStock)) {
+            stockStyle = "low";
+            stockLabel = "재고 " + totalStock;
+        } else {
+            stockStyle = "ok";
+            stockLabel = "재고 " + totalStock;
+        }
+        String channelLabel = product.getExternalChannelType() != null ? product.getExternalChannelType().getLabel() : null;
+        return new ProductListItem(product.getId(), product.getName(), thumbnailUrl,
+                optionSummary(variants), ProductVariant.formatPriceRange(variants), stockLabel, stockStyle, channelLabel);
+    }
+
+    // "N옵션" total is the product's actual variant count (= the cartesian product of every
+    // group's values, by construction at registration/import time) — not recomputed from the
+    // per-group counts, so it stays correct even if that invariant ever loosens.
+    private String optionSummary(List<ProductVariant> variants) {
+        Map<OptionGroup, LinkedHashSet<String>> valuesByGroup = new LinkedHashMap<>();
+        for (ProductVariant variant : variants) {
+            for (OptionValue optionValue : variant.getOptionValues()) {
+                valuesByGroup.computeIfAbsent(optionValue.getOptionGroup(), g -> new LinkedHashSet<>()).add(optionValue.getValue());
+            }
+        }
+        if (valuesByGroup.isEmpty()) {
+            return "";
+        }
+        List<OptionGroup> groups = valuesByGroup.keySet().stream()
+                .sorted(Comparator.comparing(OptionGroup::getId))
+                .toList();
+        List<String> segments = new ArrayList<>();
+        for (OptionGroup group : groups) {
+            segments.add(summarizeOptionGroup(group.getName(), new ArrayList<>(valuesByGroup.get(group))));
+        }
+        if (groups.size() >= 2) {
+            segments.add(variants.size() + "옵션");
+        }
+        return String.join(" · ", segments);
+    }
+
+    // "색상"/"컬러" groups summarize as a count ("2색") to match the list-screen mockup;
+    // every other group lists its values literally while there are few, or falls back to a
+    // count once there are enough that spelling them all out would get noisy.
+    private String summarizeOptionGroup(String groupName, List<String> values) {
+        if ("색상".equals(groupName) || "컬러".equals(groupName)) {
+            return values.size() + "색";
+        }
+        if (values.size() <= 4) {
+            return String.join(",", values);
+        }
+        return values.size() + groupName;
     }
 
     @Transactional

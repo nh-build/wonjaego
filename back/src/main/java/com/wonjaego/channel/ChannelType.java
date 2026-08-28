@@ -2,7 +2,9 @@ package com.wonjaego.channel;
 
 // The fixed set of platforms selectable on the 채널 연동 screen. Distinct from SalesChannel
 // (a seller's free-text channel tag, ADR 0005) — this enumerates platforms wonjaego knows how
-// to talk to via API, not channels a seller has manually registered.
+// to talk to via API, not channels a seller has manually registered. Role is no longer a
+// static property of the platform — see ChannelCredential.role, which a seller sets per
+// connection on the management screen.
 public enum ChannelType {
 
     ZIGZAG("지그재그", true),

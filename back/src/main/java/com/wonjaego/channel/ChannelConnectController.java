@@ -1,8 +1,5 @@
 package com.wonjaego.channel;
 
-import com.wonjaego.integration.zigzag.ZigzagApiException;
-import com.wonjaego.integration.zigzag.ZigzagImportResult;
-import com.wonjaego.integration.zigzag.ZigzagProductImportService;
 import com.wonjaego.member.MemberPrincipal;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -20,7 +17,6 @@ public class ChannelConnectController {
 
     private final ChannelCredentialService channelCredentialService;
     private final ChannelCredentialRepository channelCredentialRepository;
-    private final ZigzagProductImportService zigzagProductImportService;
 
     @GetMapping("/channels/connect")
     public String form(@AuthenticationPrincipal MemberPrincipal principal, Model model) {
@@ -40,15 +36,11 @@ public class ChannelConnectController {
             } else if (isBlank(form.getAccessKey()) || isBlank(form.getSecretKey())) {
                 bindingResult.reject("invalid", "Access Key와 Secret Key를 모두 입력해주세요.");
             } else {
-                try {
-                    channelCredentialService.saveOrUpdate(principal.getMemberId(), ChannelType.ZIGZAG,
-                            form.getAccessKey().trim(), form.getSecretKey().trim());
-                    ZigzagImportResult result = zigzagProductImportService.importProducts(principal.getMemberId());
-                    model.addAttribute("importResult", result);
-                } catch (ZigzagApiException e) {
-                    // The exception message already carries the raw API/HTTP error — show it as-is.
-                    bindingResult.reject("invalid", e.getMessage());
-                }
+                // 연동만 한다 — 상품 가져오기는 관리 화면에서 역할을 상품 소스로 정한 뒤
+                // 별도로 트리거하는 동작이다 (연동 먼저 → 관리화면에서 역할 선택).
+                ChannelCredential credential = channelCredentialService.connect(principal.getMemberId(), ChannelType.ZIGZAG,
+                        form.getAccessKey().trim(), form.getSecretKey().trim());
+                return "redirect:/channels/" + credential.getId();
             }
         }
         model.addAttribute("form", form);

@@ -47,18 +47,7 @@
             padding: 20px 20px 40px;
         }
 
-        .top-bar { display: flex; align-items: center; margin-bottom: 4px; }
-
-        .back-button, .top-bar-spacer { width: 40px; height: 40px; flex-shrink: 0; }
-
-        .back-button {
-            display: flex; align-items: center; justify-content: center;
-            border-radius: 999px; background: none; border: none; cursor: pointer;
-        }
-
-        .top-bar-title { flex: 1; text-align: center; }
-        .top-bar-title h1 { margin: 0; font-size: 1.25rem; font-weight: 700; }
-        .top-bar-subtitle { margin: 2px 0 0; font-size: 0.8rem; color: var(--color-text-muted); }
+        .page-subtitle { margin: 16px 2px 4px; font-size: 0.85rem; color: var(--color-text-muted); }
 
         .search-row { display: flex; gap: 10px; margin: 20px 0 4px; align-items: stretch; }
 
@@ -232,19 +221,9 @@
     </style>
 </head>
 <body>
+    <div th:replace="~{fragments/layout :: appbar('입고하기', true, null, null, false)}"></div>
     <div class="page">
-        <div class="top-bar">
-            <a href="/" class="back-button" aria-label="홈으로">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <polyline points="15 18 9 12 15 6"></polyline>
-                </svg>
-            </a>
-            <div class="top-bar-title">
-                <h1>입고하기</h1>
-                <p class="top-bar-subtitle">재고를 채웁니다 (+)</p>
-            </div>
-            <span class="top-bar-spacer"></span>
-        </div>
+        <p class="page-subtitle">재고를 채웁니다 (+)</p>
 
         <div class="search-row">
             <div class="search-input-wrapper">

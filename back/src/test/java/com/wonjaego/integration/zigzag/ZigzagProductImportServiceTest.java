@@ -97,7 +97,7 @@ class ZigzagProductImportServiceTest {
 
     private Long createMemberWithZigzagKeys(String username) {
         Member member = memberService.signUp(username, "password123", "가게-" + username);
-        channelCredentialService.saveOrUpdate(member.getId(), ChannelType.ZIGZAG, "access", "secret");
+        channelCredentialService.connect(member.getId(), ChannelType.ZIGZAG, "access", "secret");
         return member.getId();
     }
 

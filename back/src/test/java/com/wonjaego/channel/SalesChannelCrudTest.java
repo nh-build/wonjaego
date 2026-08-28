@@ -34,7 +34,7 @@ class SalesChannelCrudTest {
     private SalesChannelRepository salesChannelRepository;
 
     private void createChannel(MockHttpSession session, String name) throws Exception {
-        mockMvc.perform(post("/channels")
+        mockMvc.perform(post("/channels/tags")
                 .session(session)
                 .with(csrf())
                 .param("name", name));
@@ -51,14 +51,14 @@ class SalesChannelCrudTest {
     void 로그인한_회원은_채널을_등록하고_목록에서_확인할_수_있다() throws Exception {
         MockHttpSession session = AuthTestSupport.signUpAndLogin(mockMvc, "seller1", "password123", "가게1");
 
-        mockMvc.perform(post("/channels")
+        mockMvc.perform(post("/channels/tags")
                         .session(session)
                         .with(csrf())
                         .param("name", "스마트스토어"))
                 .andExpect(status().is3xxRedirection())
-                .andExpect(redirectedUrl("/channels"));
+                .andExpect(redirectedUrl("/channels/tags"));
 
-        mockMvc.perform(get("/channels").session(session))
+        mockMvc.perform(get("/channels/tags").session(session))
                 .andExpect(status().isOk())
                 .andExpect(content().string(containsString("스마트스토어")));
     }
@@ -68,7 +68,7 @@ class SalesChannelCrudTest {
         MockHttpSession session = AuthTestSupport.signUpAndLogin(mockMvc, "seller2", "password123", "가게2");
         createChannel(session, "에이블리");
 
-        mockMvc.perform(post("/channels")
+        mockMvc.perform(post("/channels/tags")
                         .session(session)
                         .with(csrf())
                         .param("name", "에이블리"))
@@ -86,7 +86,7 @@ class SalesChannelCrudTest {
 
         MockHttpSession session2 = AuthTestSupport.signUpAndLogin(mockMvc, "seller4", "password123", "가게4");
 
-        mockMvc.perform(get("/channels").session(session2))
+        mockMvc.perform(get("/channels/tags").session(session2))
                 .andExpect(status().isOk())
                 .andExpect(content().string(not(containsString("회원3채널"))));
     }
@@ -97,7 +97,7 @@ class SalesChannelCrudTest {
         createChannel(session, "원래이름");
         Long channelId = findByName("원래이름").getId();
 
-        mockMvc.perform(post("/channels/" + channelId + "/edit")
+        mockMvc.perform(post("/channels/tags/" + channelId + "/edit")
                         .session(session)
                         .with(csrf())
                         .param("name", "바뀐이름"))
@@ -113,7 +113,7 @@ class SalesChannelCrudTest {
         createChannel(session, "바꿀채널");
         Long channelId = findByName("바꿀채널").getId();
 
-        mockMvc.perform(post("/channels/" + channelId + "/edit")
+        mockMvc.perform(post("/channels/tags/" + channelId + "/edit")
                         .session(session)
                         .with(csrf())
                         .param("name", "지그재그"))
@@ -131,7 +131,7 @@ class SalesChannelCrudTest {
 
         MockHttpSession attackerSession = AuthTestSupport.signUpAndLogin(mockMvc, "seller8", "password123", "가게8");
 
-        mockMvc.perform(get("/channels/" + victimChannelId + "/edit").session(attackerSession))
+        mockMvc.perform(get("/channels/tags/" + victimChannelId + "/edit").session(attackerSession))
                 .andExpect(status().isNotFound());
     }
 
@@ -146,7 +146,7 @@ class SalesChannelCrudTest {
 
         // Attacker already owns a channel named "공격자채널" — this must still 404 on
         // ownership, not fall through to a duplicate-name error.
-        mockMvc.perform(post("/channels/" + victimChannelId + "/edit")
+        mockMvc.perform(post("/channels/tags/" + victimChannelId + "/edit")
                         .session(attackerSession)
                         .with(csrf())
                         .param("name", "공격자채널"))
@@ -165,7 +165,7 @@ class SalesChannelCrudTest {
 
         // A blank name fails @NotBlank validation before update()/getOwned() would
         // normally run — ownership must still be enforced first.
-        mockMvc.perform(post("/channels/" + victimChannelId + "/edit")
+        mockMvc.perform(post("/channels/tags/" + victimChannelId + "/edit")
                         .session(attackerSession)
                         .with(csrf())
                         .param("name", ""))
@@ -180,7 +180,7 @@ class SalesChannelCrudTest {
         createChannel(session, "삭제될채널");
         Long channelId = findByName("삭제될채널").getId();
 
-        mockMvc.perform(post("/channels/" + channelId + "/delete").session(session).with(csrf()))
+        mockMvc.perform(post("/channels/tags/" + channelId + "/delete").session(session).with(csrf()))
                 .andExpect(status().is3xxRedirection());
 
         assertThat(salesChannelRepository.findById(channelId)).isEmpty();
@@ -194,7 +194,7 @@ class SalesChannelCrudTest {
 
         MockHttpSession attackerSession = AuthTestSupport.signUpAndLogin(mockMvc, "seller13", "password123", "가게13");
 
-        mockMvc.perform(post("/channels/" + victimChannelId + "/delete").session(attackerSession).with(csrf()))
+        mockMvc.perform(post("/channels/tags/" + victimChannelId + "/delete").session(attackerSession).with(csrf()))
                 .andExpect(status().isNotFound());
 
         assertThat(salesChannelRepository.findById(victimChannelId)).isPresent();

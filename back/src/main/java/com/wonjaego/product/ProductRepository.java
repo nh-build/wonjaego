@@ -19,4 +19,7 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
     // Backs 채널 연동 import's find-or-create dedup by the source channel's own product id.
     Optional<Product> findByMemberIdAndExternalChannelTypeAndExternalProductId(
             Long memberId, ChannelType externalChannelType, String externalProductId);
+
+    // Backs the 판매채널 screen's "상품 N개" count for a connected product-source channel.
+    long countByMemberIdAndExternalChannelType(Long memberId, ChannelType externalChannelType);
 }

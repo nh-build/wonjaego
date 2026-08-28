@@ -72,7 +72,7 @@ class ProductStockFilterTest {
     }
 
     private Long createChannel(MockHttpSession session, String name) throws Exception {
-        mockMvc.perform(post("/channels").session(session).with(csrf()).param("name", name));
+        mockMvc.perform(post("/channels/tags").session(session).with(csrf()).param("name", name));
         return salesChannelRepository.findAll().stream()
                 .filter(c -> c.getName().equals(name))
                 .findFirst()

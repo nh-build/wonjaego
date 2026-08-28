@@ -7,8 +7,6 @@ import com.wonjaego.storage.FileStorage;
 import jakarta.validation.Valid;
 import java.util.Arrays;
 import java.util.List;
-import java.util.Map;
-import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import org.springframework.core.io.Resource;
 import org.springframework.http.MediaType;
@@ -36,37 +34,36 @@ public class ProductController {
     private final FileStorage fileStorage;
     private final NameSuggestionClient nameSuggestionClient;
 
+    // 등록 전용 화면 — 상품 목록과 분리(등록은 등록에만 집중). GET /products는 목록 화면이다.
+    @GetMapping("/products/new")
+    public String newForm(Model model) {
+        model.addAttribute("form", new ProductCreateForm());
+        return "products/new";
+    }
+
     @GetMapping("/products")
     public String list(@AuthenticationPrincipal MemberPrincipal principal,
                         @RequestParam(required = false) String stock,
+                        @RequestParam(required = false) String q,
+                        @RequestParam(required = false) String sort,
                         Model model) {
-        addProductListModel(principal.getMemberId(), stock, model);
-        model.addAttribute("form", new ProductCreateForm());
+        model.addAttribute("page", productService.listPage(principal.getMemberId(), q, stock, sort, 0));
+        model.addAttribute("stockFilter", stock);
+        model.addAttribute("query", q);
+        model.addAttribute("sort", sort);
         return "products/list";
     }
 
-    // Populates both "products" (optionally stock-filtered) and "priceRanges" (ADR 0008 —
-    // Product no longer stores its own price) from a single variants-by-product grouping,
-    // rather than querying variants twice.
-    private void addProductListModel(Long memberId, String stock, Model model) {
-        List<Product> products = productService.listOwned(memberId);
-        Map<Long, List<ProductVariant>> variantsByProductId = productVariantService.listOwned(memberId).stream()
-                .collect(Collectors.groupingBy(variant -> variant.getProduct().getId()));
-
-        // "stock" is only ever "low" or "out" from the dashboard's tiles — any other value
-        // (missing, typo, tampered) falls back to the unfiltered list rather than silently
-        // showing an empty/wrong subset.
-        List<Product> filtered = ("low".equals(stock) || "out".equals(stock))
-                ? products.stream()
-                        .filter(product -> variantsByProductId.getOrDefault(product.getId(), List.of()).stream()
-                                .anyMatch("out".equals(stock) ? v -> v.getStockQuantity() == 0 : ProductVariant::isLowStock))
-                        .toList()
-                : products;
-
-        model.addAttribute("products", filtered);
-        model.addAttribute("stockFilter", stock);
-        model.addAttribute("priceRanges", variantsByProductId.entrySet().stream()
-                .collect(Collectors.toMap(Map.Entry::getKey, e -> ProductVariant.formatPriceRange(e.getValue()))));
+    // Backs the list screen's infinite scroll (page 0 is already server-rendered by list()
+    // above) — same filter/sort/pagination logic, one shared source (ProductService.listPage).
+    @GetMapping("/products/list-page")
+    @ResponseBody
+    public ProductListPage listPage(@AuthenticationPrincipal MemberPrincipal principal,
+                                     @RequestParam(required = false) String stock,
+                                     @RequestParam(required = false) String q,
+                                     @RequestParam(required = false) String sort,
+                                     @RequestParam(defaultValue = "0") int page) {
+        return productService.listPage(principal.getMemberId(), q, stock, sort, page);
     }
 
     @PostMapping("/products")
@@ -84,8 +81,7 @@ public class ProductController {
                 bindingResult.reject("invalid", e.getMessage());
             }
         }
-        addProductListModel(principal.getMemberId(), null, model);
-        return "products/list";
+        return "products/new";
     }
 
     @GetMapping("/products/{id}")
@@ -212,7 +208,7 @@ public class ProductController {
             return "redirect:/products";
         } catch (ProductHasMovementsException e) {
             model.addAttribute("error", e.getMessage());
-            return list(principal, null, model);
+            return list(principal, null, null, null, model);
         }
     }
 }

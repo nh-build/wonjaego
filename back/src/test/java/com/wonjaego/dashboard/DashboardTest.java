@@ -73,7 +73,7 @@ class DashboardTest {
     }
 
     private Long createChannel(MockHttpSession session, String name) throws Exception {
-        mockMvc.perform(post("/channels").session(session).with(csrf()).param("name", name));
+        mockMvc.perform(post("/channels/tags").session(session).with(csrf()).param("name", name));
         return salesChannelRepository.findAll().stream()
                 .filter(c -> c.getName().equals(name))
                 .findFirst()
@@ -125,7 +125,8 @@ class DashboardTest {
                 .andExpect(content().string(containsString("href=\"/products?stock=out\"")))
                 .andExpect(content().string(containsString("href=\"/movements/stock-in\"")))
                 .andExpect(content().string(containsString("href=\"/movements/stock-out\"")))
-                .andExpect(content().string(containsString("href=\"/products#product-list\"")))
+                .andExpect(content().string(containsString("href=\"/products/new\"")))
+                .andExpect(content().string(containsString("href=\"/products\"")))
                 .andExpect(content().string(containsString("입고하기")))
                 .andExpect(content().string(containsString("출고하기")))
                 .andExpect(content().string(containsString("상품 등록")))

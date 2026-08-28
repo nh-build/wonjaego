@@ -76,37 +76,147 @@
     </script>
 </head>
 <body class="min-h-screen flex flex-col bg-base-100 text-base-content">
-    <header th:fragment="appbar(title, backHref)" class="flex items-center px-4 py-4 max-w-screen-md mx-auto">
-        <a th:href="@{${backHref}}" class="btn btn-ghost btn-circle" aria-label="뒤로가기">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                 stroke-linecap="round" stroke-linejoin="round">
-                <polyline points="15 18 9 12 15 6"></polyline>
-            </svg>
-        </a>
-        <h1 class="flex-1 text-center text-lg font-bold" th:text="${title}"></h1>
-        <div class="dropdown dropdown-end">
-            <div tabindex="0" role="button" class="btn btn-ghost btn-circle" aria-label="메뉴">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
-                    <line x1="3" y1="6" x2="21" y2="6"></line>
-                    <line x1="3" y1="12" x2="21" y2="12"></line>
-                    <line x1="3" y1="18" x2="21" y2="18"></line>
+    <div th:fragment="appbar(title, showBack, rightHref, rightLabel, showMenu)" class="appbar">
+        <style>
+            /* 이 스타일은 appbar 프래그먼트 자체에 포함돼 있어 — daisyUI 테마를 쓰는 화면이든
+               자체 :root 팔레트를 쓰는 화면이든 상관없이 어디서 호출해도 동일하게 렌더된다. */
+            .appbar {
+                --appbar-bg: #F7FBFE;
+                --appbar-ink: #2B3A45;
+                display: grid;
+                grid-template-columns: 48px 1fr 48px;
+                align-items: center;
+                height: 56px;
+                padding: 0 8px;
+                background: var(--appbar-bg);
+            }
+
+            .appbar-left { justify-self: start; }
+
+            .appbar-right {
+                justify-self: end;
+                display: flex;
+                align-items: center;
+                gap: 4px;
+                position: relative;
+            }
+
+            .appbar-title {
+                text-align: center;
+                font-size: 18px;
+                font-weight: 800;
+                color: var(--appbar-ink);
+                white-space: nowrap;
+                overflow: hidden;
+                text-overflow: ellipsis;
+            }
+
+            .icon-btn, .appbar-action {
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                min-width: 44px;
+                height: 44px;
+                border: none;
+                background: none;
+                border-radius: 999px;
+                color: var(--appbar-ink);
+                cursor: pointer;
+                text-decoration: none;
+                font-size: 0.9rem;
+                font-weight: 700;
+                font-family: inherit;
+            }
+
+            .appbar-menu-dropdown {
+                position: absolute;
+                top: 48px;
+                right: 0;
+                background: #FFFFFF;
+                border: 1px solid #E9EEF3;
+                border-radius: 12px;
+                padding: 6px;
+                min-width: 140px;
+                box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+                z-index: 20;
+                display: flex;
+                flex-direction: column;
+            }
+
+            .appbar-menu-dropdown.hidden { display: none; }
+
+            .appbar-menu-dropdown a, .appbar-menu-dropdown button {
+                display: block;
+                width: 100%;
+                text-align: left;
+                padding: 8px 10px;
+                border-radius: 8px;
+                border: none;
+                background: none;
+                font-family: inherit;
+                font-size: 0.9rem;
+                color: var(--appbar-ink);
+                cursor: pointer;
+            }
+
+            .appbar-menu-dropdown a:hover, .appbar-menu-dropdown button:hover {
+                background: #E4F0FA;
+            }
+        </style>
+        <div class="appbar-left">
+            <a th:if="${showBack}" href="/" class="icon-btn" aria-label="홈">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                     stroke-linecap="round" stroke-linejoin="round">
+                    <polyline points="15 18 9 12 15 6"></polyline>
                 </svg>
-            </div>
-            <ul tabindex="0" class="dropdown-content menu bg-base-100 rounded-box shadow-sm w-40 p-2 z-10">
-                <li sec:authorize="isAuthenticated()"><a href="/">홈</a></li>
-                <li sec:authorize="isAuthenticated()"><a href="/products">상품</a></li>
-                <li sec:authorize="isAuthenticated()"><a href="/channels">채널</a></li>
-                <li sec:authorize="isAuthenticated()"><a href="/me">내 정보</a></li>
-                <li sec:authorize="isAuthenticated()">
-                    <form th:action="@{/logout}" method="post">
-                        <button type="submit" class="w-full text-left">로그아웃</button>
-                    </form>
-                </li>
-                <li sec:authorize="!isAuthenticated()"><a href="/login">로그인</a></li>
-                <li sec:authorize="!isAuthenticated()"><a href="/signup">회원가입</a></li>
-            </ul>
+            </a>
         </div>
-    </header>
+        <div class="appbar-title" th:text="${title}"></div>
+        <div class="appbar-right">
+            <a th:if="${rightLabel}" th:href="@{${rightHref}}" class="appbar-action" th:text="${rightLabel}"></a>
+            <div th:if="${showMenu}" class="appbar-menu">
+                <button type="button" class="icon-btn appbar-menu-button" aria-label="메뉴">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+                        <line x1="3" y1="6" x2="21" y2="6"></line>
+                        <line x1="3" y1="12" x2="21" y2="12"></line>
+                        <line x1="3" y1="18" x2="21" y2="18"></line>
+                    </svg>
+                </button>
+                <div class="appbar-menu-dropdown hidden">
+                    <a sec:authorize="isAuthenticated()" href="/">홈</a>
+                    <a sec:authorize="isAuthenticated()" href="/products">상품</a>
+                    <a sec:authorize="isAuthenticated()" href="/channels">판매 채널</a>
+                    <a sec:authorize="isAuthenticated()" href="/me">내 정보</a>
+                    <form sec:authorize="isAuthenticated()" th:action="@{/logout}" method="post">
+                        <button type="submit">로그아웃</button>
+                    </form>
+                    <a sec:authorize="!isAuthenticated()" href="/login">로그인</a>
+                    <a sec:authorize="!isAuthenticated()" href="/signup">회원가입</a>
+                </div>
+            </div>
+        </div>
+        <script th:inline="none">
+            (function () {
+                document.querySelectorAll('.appbar-menu').forEach(function (menu) {
+                    var button = menu.querySelector('.appbar-menu-button');
+                    var dropdown = menu.querySelector('.appbar-menu-dropdown');
+                    if (!button || !dropdown || button.dataset.appbarBound) {
+                        return;
+                    }
+                    button.dataset.appbarBound = 'true';
+                    button.addEventListener('click', function (event) {
+                        event.stopPropagation();
+                        dropdown.classList.toggle('hidden');
+                    });
+                    document.addEventListener('click', function (event) {
+                        if (!dropdown.classList.contains('hidden') && !menu.contains(event.target)) {
+                            dropdown.classList.add('hidden');
+                        }
+                    });
+                });
+            })();
+        </script>
+    </div>
     <footer th:fragment="footer" class="footer footer-center mt-auto p-6 text-base-content/60 text-sm">
         <p>&copy; 원재고</p>
     </footer>

@@ -2,10 +2,10 @@
 <html xmlns:th="http://www.thymeleaf.org" data-theme="wonjaego">
 <head th:replace="~{fragments/layout :: head('로그인')}"></head>
 <body class="min-h-screen flex flex-col">
-    <header th:replace="~{fragments/layout :: appbar('로그인', '/')}"></header>
+    <div th:replace="~{fragments/layout :: appbar('로그인', true, null, null, true)}"></div>
 
-    <main class="flex-1 flex items-end justify-center px-4 pb-12">
-        <div class="card w-full max-w-sm bg-base-200 shadow-sm rounded-3xl">
+    <main class="flex-1 flex items-center justify-center min-h-[100dvh] p-6 box-border">
+        <div class="card w-full max-w-[360px] bg-base-200 shadow-sm rounded-3xl">
             <div class="card-body items-center gap-4">
                 <img src="/logo_ver1.png" alt="원재고" class="w-40 h-auto">
                 <p class="login-tagline -mt-2">All your stock, in ONE</p>

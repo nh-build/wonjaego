@@ -45,18 +45,6 @@
             padding: 20px 20px 40px;
         }
 
-        .top-bar { display: flex; align-items: center; margin-bottom: 4px; }
-
-        .back-button, .top-bar-spacer { width: 40px; height: 40px; flex-shrink: 0; }
-
-        .back-button {
-            display: flex; align-items: center; justify-content: center;
-            border-radius: 999px; background: none; border: none; cursor: pointer;
-        }
-
-        .top-bar-title { flex: 1; text-align: center; }
-        .top-bar-title h1 { margin: 0; font-size: 1.25rem; font-weight: 700; }
-
         .page-subtitle { margin: 12px 2px 20px; font-size: 0.85rem; color: var(--color-text-muted); }
 
         h2.section-title { font-size: 0.95rem; font-weight: 700; margin: 20px 0 10px; }
@@ -195,22 +183,9 @@
     </style>
 </head>
 <body>
+    <div th:replace="~{fragments/layout :: appbar('채널 연동', true, null, null, false)}"></div>
     <div class="page">
-        <div class="top-bar">
-            <a href="/" class="back-button" aria-label="홈으로">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <polyline points="15 18 9 12 15 6"></polyline>
-                </svg>
-            </a>
-            <div class="top-bar-title">
-                <h1>채널 연동</h1>
-            </div>
-            <span class="top-bar-spacer"></span>
-        </div>
         <p class="page-subtitle">판매 중인 채널을 연결하면 상품을 자동으로 가져와요</p>
-
-        <div th:if="${importResult != null}" class="import-result"
-             th:text="${importResult.productCount()} + '개 상품을 가져왔어요!'"></div>
 
         <form id="channel-connect-form" th:action="@{/channels/connect}" th:object="${form}" method="post">
             <div th:if="${#fields.hasGlobalErrors()}" class="global-error">
@@ -269,7 +244,7 @@
                     <line x1="12" y1="5" x2="12" y2="19"></line>
                     <polyline points="6 13 12 19 18 13"></polyline>
                 </svg>
-                <span id="submit-button-label">연동하고 상품 가져오기</span>
+                <span id="submit-button-label">연동하기</span>
             </button>
         </form>
     </div>
@@ -353,7 +328,7 @@
             // submit, this just gives the user "가져오는 중" feedback while it waits.
             form.addEventListener('submit', function () {
                 submitButton.disabled = true;
-                submitButtonLabel.textContent = '상품을 가져오고 있어요… 잠시만 기다려주세요';
+                submitButtonLabel.textContent = '연동하고 있어요… 잠시만 기다려주세요';
             });
 
             var helpOpenButton = document.getElementById('help-open-button');

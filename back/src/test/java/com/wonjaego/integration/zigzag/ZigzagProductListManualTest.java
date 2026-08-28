@@ -16,8 +16,15 @@ import tools.jackson.databind.JsonNode;
 @EnabledIfEnvironmentVariable(named = "ZIGZAG_SECRET_KEY", matches = ".+")
 class ZigzagProductListManualTest {
 
-    // No arguments — 지그재그 GraphQL 스키마 기준 product_list는 파라미터를 받지 않고
-    // 판매자의 전체 상품을 반환한다 (https://zigzag.kr/_openapi/openapi.graphql).
+    // product_list는 인자를 하나도 받지 않는다(페이지네이션도, 날짜/상태/카테고리 같은 필터도
+    // 없음 — 공식 스키마 https://zigzag.kr/_openapi/openapi.graphql 및 introspection 시도로
+    // 2026-08-23에 확인). 응답도 항상 {data: {product_list: {item_list: [...]}}} 뿐이라
+    // total_count/cursor 등 다음 페이지를 가리키는 정보가 전혀 없고, 실측 결과 정확히 100건에서
+    // 잘렸다 — 문서화되지 않은 서버 측 상한으로 보인다(지그재그 파트너센터에 문의 중). 즉 이
+    // 쿼리로는 셀러 상품이 100개를 넘어도 100개까지만 가져올 수 있다 — 아래 테스트가 정확히
+    // 100건을 출력하면 이 상한에 걸렸다는 뜻이지, 그 계정의 전체 상품 수라는 보장이 없다.
+    private static final int KNOWN_PRODUCT_LIST_CAP = 100;
+
     private static final String PRODUCT_LIST_QUERY = """
             query {
               product_list {
@@ -50,6 +57,10 @@ class ZigzagProductListManualTest {
 
         JsonNode itemList = data.path("product_list").path("item_list");
         log.info("지그재그 내 상품 {}건 조회됨", itemList.size());
+        if (itemList.size() == KNOWN_PRODUCT_LIST_CAP) {
+            log.warn("정확히 {}건 조회됨 — product_list의 (문서화되지 않은) 상한에 걸렸을 가능성이 "
+                    + "높습니다. 이 계정의 실제 전체 상품 수는 이보다 많을 수 있습니다.", KNOWN_PRODUCT_LIST_CAP);
+        }
         itemList.forEach(item -> log.info(" - [{}] {} (판매상태: {}, 노출상태: {})",
                 item.path("id").asString(),
                 item.path("name").asString(),

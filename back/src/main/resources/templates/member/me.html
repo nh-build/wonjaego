@@ -49,76 +49,6 @@
             padding: 16px 20px 40px;
         }
 
-        .top-bar {
-            display: flex;
-            align-items: center;
-            padding: 8px 0 20px;
-        }
-
-        .icon-button {
-            width: 40px;
-            height: 40px;
-            border-radius: 999px;
-            background: transparent;
-            border: none;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            cursor: pointer;
-            color: var(--color-text);
-        }
-
-        .top-bar h1 {
-            flex: 1;
-            text-align: center;
-            font-size: 1.1rem;
-            font-weight: 700;
-            margin: 0;
-        }
-
-        .menu-wrapper {
-            position: relative;
-        }
-
-        .menu-dropdown {
-            position: absolute;
-            top: 44px;
-            right: 0;
-            background: var(--color-card);
-            border: 1px solid var(--color-card-border);
-            border-radius: 12px;
-            padding: 6px;
-            min-width: 140px;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
-            z-index: 10;
-            display: flex;
-            flex-direction: column;
-        }
-
-        .menu-dropdown.hidden {
-            display: none;
-        }
-
-        .menu-dropdown a,
-        .menu-dropdown button {
-            display: block;
-            width: 100%;
-            text-align: left;
-            padding: 8px 10px;
-            border-radius: 8px;
-            border: none;
-            background: none;
-            font-family: inherit;
-            font-size: 0.9rem;
-            color: var(--color-text);
-            cursor: pointer;
-        }
-
-        .menu-dropdown a:hover,
-        .menu-dropdown button:hover {
-            background: var(--color-tile);
-        }
-
         .card {
             background: var(--color-card);
             border: 1px solid var(--color-card-border);
@@ -276,35 +206,8 @@
     </style>
 </head>
 <body>
+    <div th:replace="~{fragments/layout :: appbar('내 정보', false, null, null, true)}"></div>
     <div class="page">
-        <div class="top-bar">
-            <a href="/" class="icon-button" aria-label="뒤로가기">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                     stroke-linecap="round" stroke-linejoin="round">
-                    <polyline points="15 18 9 12 15 6"></polyline>
-                </svg>
-            </a>
-            <h1>내 정보</h1>
-            <div class="menu-wrapper">
-                <button type="button" id="me-menu-button" class="icon-button" aria-label="메뉴">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
-                        <line x1="3" y1="6" x2="21" y2="6"></line>
-                        <line x1="3" y1="12" x2="21" y2="12"></line>
-                        <line x1="3" y1="18" x2="21" y2="18"></line>
-                    </svg>
-                </button>
-                <div id="me-menu-dropdown" class="menu-dropdown hidden">
-                    <a href="/">홈</a>
-                    <a href="/products">상품</a>
-                    <a href="/channels">채널</a>
-                    <a href="/me">내 정보</a>
-                    <form th:action="@{/logout}" method="post">
-                        <button type="submit">로그아웃</button>
-                    </form>
-                </div>
-            </div>
-        </div>
-
         <div class="card profile-card">
             <div class="avatar" th:text="${#strings.substring(member.businessName, 0, 1)}"></div>
             <div class="profile-info">
@@ -316,7 +219,7 @@
             </div>
         </div>
 
-        <p class="section-title">연결된 판매 채널</p>
+        <p class="section-title">연결된 주문 채널 태그</p>
         <div class="channel-chips" th:if="${!#lists.isEmpty(salesChannels)}">
             <span class="channel-chip" th:each="channel : ${salesChannels}">
                 <span class="channel-dot"></span>
@@ -324,10 +227,13 @@
             </span>
         </div>
         <p class="empty-channels" th:if="${#lists.isEmpty(salesChannels)}">
-            등록된 판매 채널이 없습니다. <a href="/channels">채널 등록하기</a>
+            등록된 주문 채널 태그가 없습니다. <a href="/channels/tags">태그 등록하기</a>
+        </p>
+        <p class="empty-channels" th:if="${!#lists.isEmpty(salesChannels)}">
+            <a href="/channels/tags">채널 태그 관리</a>
         </p>
         <p class="empty-channels">
-            <a href="/channels/connect">판매 채널 API로 연동하고 상품 가져오기 →</a>
+            <a href="/channels">판매 채널 API로 연동하고 상품 가져오기 →</a>
         </p>
 
         <div class="card menu-list">
@@ -389,26 +295,5 @@
 
         <span class="withdraw-link">회원 탈퇴</span>
     </div>
-
-    <script th:inline="none">
-        (function () {
-            var button = document.getElementById('me-menu-button');
-            var dropdown = document.getElementById('me-menu-dropdown');
-            if (!button || !dropdown) {
-                return;
-            }
-
-            button.addEventListener('click', function (event) {
-                event.stopPropagation();
-                dropdown.classList.toggle('hidden');
-            });
-
-            document.addEventListener('click', function (event) {
-                if (!dropdown.classList.contains('hidden') && !dropdown.contains(event.target)) {
-                    dropdown.classList.add('hidden');
-                }
-            });
-        })();
-    </script>
 </body>
 </html>

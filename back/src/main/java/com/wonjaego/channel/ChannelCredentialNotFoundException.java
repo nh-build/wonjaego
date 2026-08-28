@@ -9,4 +9,8 @@ public class ChannelCredentialNotFoundException extends RuntimeException {
     public ChannelCredentialNotFoundException(ChannelType channelType) {
         super("연동된 채널 키를 찾을 수 없습니다: " + channelType);
     }
+
+    public ChannelCredentialNotFoundException(Long id) {
+        super("채널을 찾을 수 없습니다: " + id);
+    }
 }

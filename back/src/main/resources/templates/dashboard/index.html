@@ -54,72 +54,6 @@
             padding: 24px 20px 96px;
         }
 
-        .top-bar {
-            display: flex;
-            align-items: flex-start;
-            justify-content: space-between;
-        }
-
-        .top-bar img {
-            height: 60px;
-            width: auto;
-        }
-
-        .icon-button {
-            width: 40px;
-            height: 40px;
-            border-radius: 999px;
-            background: var(--color-tile);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            border: none;
-            cursor: pointer;
-        }
-
-        .menu-wrapper {
-            position: relative;
-        }
-
-        .menu-dropdown {
-            position: absolute;
-            top: 48px;
-            right: 0;
-            background: var(--color-card);
-            border: 1px solid var(--color-card-border);
-            border-radius: 12px;
-            padding: 6px;
-            min-width: 140px;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
-            z-index: 10;
-            display: flex;
-            flex-direction: column;
-        }
-
-        .menu-dropdown.hidden {
-            display: none;
-        }
-
-        .menu-dropdown a,
-        .menu-dropdown button {
-            display: block;
-            width: 100%;
-            text-align: left;
-            padding: 8px 10px;
-            border-radius: 8px;
-            border: none;
-            background: none;
-            font-family: inherit;
-            font-size: 0.9rem;
-            color: var(--color-text);
-            cursor: pointer;
-        }
-
-        .menu-dropdown a:hover,
-        .menu-dropdown button:hover {
-            background: var(--color-tile);
-        }
-
         .tagline {
             margin: 8px 0 24px;
             font-family: Georgia, 'Times New Roman', serif;
@@ -250,28 +184,8 @@
     </style>
 </head>
 <body>
+    <div th:replace="~{fragments/layout :: appbar('홈', false, null, null, true)}"></div>
     <div class="page">
-        <div class="top-bar">
-            <a href="/"><img src="/logo_ver1.png" alt="원재고"></a>
-            <div class="menu-wrapper">
-                <button type="button" id="dashboard-menu-button" class="icon-button" aria-label="메뉴">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
-                        <line x1="3" y1="6" x2="21" y2="6"></line>
-                        <line x1="3" y1="12" x2="21" y2="12"></line>
-                        <line x1="3" y1="18" x2="21" y2="18"></line>
-                    </svg>
-                </button>
-                <div id="dashboard-menu-dropdown" class="menu-dropdown hidden">
-                    <a href="/">홈</a>
-                    <a href="/products">상품</a>
-                    <a href="/channels">채널</a>
-                    <a href="/me">내 정보</a>
-                    <form th:action="@{/logout}" method="post">
-                        <button type="submit">로그아웃</button>
-                    </form>
-                </div>
-            </div>
-        </div>
         <p class="tagline">All your stock, in ONE</p>
 
         <div class="summary-tiles">
@@ -294,7 +208,7 @@
         </div>
 
         <div class="quick-actions">
-            <a href="/products" class="quick-action">
+            <a href="/products/new" class="quick-action">
                 <span class="quick-action-icon">
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
                         <line x1="12" y1="5" x2="12" y2="19"></line>
@@ -321,7 +235,7 @@
                 </span>
                 <span class="quick-action-label">출고하기</span>
             </a>
-            <a href="/products#product-list" class="quick-action">
+            <a href="/products" class="quick-action">
                 <span class="quick-action-icon">
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                         <line x1="9" y1="6" x2="20" y2="6"></line>
@@ -358,25 +272,5 @@
         </div>
     </nav>
 
-    <script th:inline="none">
-        (function () {
-            var button = document.getElementById('dashboard-menu-button');
-            var dropdown = document.getElementById('dashboard-menu-dropdown');
-            if (!button || !dropdown) {
-                return;
-            }
-
-            button.addEventListener('click', function (event) {
-                event.stopPropagation();
-                dropdown.classList.toggle('hidden');
-            });
-
-            document.addEventListener('click', function (event) {
-                if (!dropdown.classList.contains('hidden') && !dropdown.contains(event.target)) {
-                    dropdown.classList.add('hidden');
-                }
-            });
-        })();
-    </script>
 </body>
 </html>

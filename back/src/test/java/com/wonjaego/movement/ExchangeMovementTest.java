@@ -73,7 +73,7 @@ class ExchangeMovementTest {
     }
 
     private Long createChannel(MockHttpSession session, String name) throws Exception {
-        mockMvc.perform(post("/channels")
+        mockMvc.perform(post("/channels/tags")
                 .session(session)
                 .with(csrf())
                 .param("name", name));

@@ -60,7 +60,7 @@ class MovementRecordingTest {
     }
 
     private Long createChannel(MockHttpSession session, String name) throws Exception {
-        mockMvc.perform(post("/channels")
+        mockMvc.perform(post("/channels/tags")
                 .session(session)
                 .with(csrf())
                 .param("name", name));
@@ -276,7 +276,7 @@ class MovementRecordingTest {
 
         recordMovement(session, variantId, channelId, "INBOUND", "1", "");
 
-        mockMvc.perform(post("/channels/" + channelId + "/delete").session(session).with(csrf()))
+        mockMvc.perform(post("/channels/tags/" + channelId + "/delete").session(session).with(csrf()))
                 .andExpect(status().isOk())
                 .andExpect(content().string(containsString("재고 기록")));
 

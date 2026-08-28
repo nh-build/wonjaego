@@ -136,7 +136,7 @@ class BaseInitDataTest {
                 .andExpect(content().string(containsString("베이직 반팔 티셔츠")))
                 .andExpect(content().string(containsString("레더 크로스백")));
 
-        mockMvc.perform(get("/channels").session(session))
+        mockMvc.perform(get("/channels/tags").session(session))
                 .andExpect(status().isOk())
                 .andExpect(content().string(containsString("스마트스토어")))
                 .andExpect(content().string(containsString("에이블리")))

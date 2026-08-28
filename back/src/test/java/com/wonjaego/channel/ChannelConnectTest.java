@@ -7,61 +7,44 @@ import static org.springframework.security.test.web.servlet.request.SecurityMock
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.redirectedUrlPattern;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-import com.wonjaego.product.ProductRepository;
+import com.wonjaego.member.MemberRepository;
 import com.wonjaego.testsupport.AuthTestSupport;
-import com.wonjaego.testsupport.FakeZigzagOpenApiClient;
-import com.wonjaego.testsupport.StubZigzagOpenApiClientConfig;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.context.SpringBootTest.WebEnvironment;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
-import org.springframework.context.annotation.Import;
 import org.springframework.mock.web.MockHttpSession;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
 
+// API-error and product-import scenarios live in ChannelTest now — connecting no longer
+// imports products immediately (연동 먼저 → 관리화면에서 역할 선택 / 상품 불러오기).
 @ActiveProfiles("test")
 @AutoConfigureMockMvc
 @SpringBootTest(webEnvironment = WebEnvironment.MOCK)
-@Import(StubZigzagOpenApiClientConfig.class)
 @Transactional
 class ChannelConnectTest {
-
-    private static final String ONE_PRODUCT_ONE_ITEM = """
-            {
-              "product_list": {
-                "item_list": [
-                  {
-                    "id": "P1",
-                    "name": "베이직 티셔츠",
-                    "price": { "original_price": 19000 },
-                    "item_list": [
-                      { "id": "I1", "attribute_list": [], "inventory": {"quantity": 7} }
-                    ]
-                  }
-                ]
-              }
-            }
-            """;
 
     @Autowired
     private MockMvc mockMvc;
 
     @Autowired
-    private com.wonjaego.integration.zigzag.ZigzagOpenApiClient zigzagOpenApiClient;
-
-    @Autowired
     private ChannelCredentialRepository channelCredentialRepository;
 
     @Autowired
-    private ProductRepository productRepository;
+    private MemberRepository memberRepository;
 
-    private FakeZigzagOpenApiClient fakeClient() {
-        return (FakeZigzagOpenApiClient) zigzagOpenApiClient;
+    private Long memberId(String username) {
+        return memberRepository.findAll().stream()
+                .filter(m -> m.getUsername().equals(username))
+                .findFirst()
+                .orElseThrow()
+                .getId();
     }
 
     @Test
@@ -94,25 +77,19 @@ class ChannelConnectTest {
     }
 
     @Test
-    void 키를_입력하고_연동하면_암호화되어_저장되고_상품이_가져와진다() throws Exception {
+    void 키를_입력하고_연동하면_암호화되어_저장되고_관리화면으로_이동한다() throws Exception {
         MockHttpSession session = AuthTestSupport.signUpAndLogin(mockMvc, "conn2", "password123", "가게2");
-        fakeClient().respondWith(ONE_PRODUCT_ONE_ITEM);
 
         mockMvc.perform(post("/channels/connect").session(session).with(csrf())
                         .param("channelType", "ZIGZAG")
                         .param("accessKey", "my-access")
                         .param("secretKey", "my-secret"))
-                .andExpect(status().isOk())
-                .andExpect(content().string(containsString("1개 상품을 가져왔어요")));
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrlPattern("/channels/*"));
 
-        var products = productRepository.findAll().stream()
-                .filter(p -> "베이직 티셔츠".equals(p.getName()))
-                .toList();
-        assertThat(products).hasSize(1);
-
-        var credential = channelCredentialRepository.findByMemberIdAndChannelType(
-                products.get(0).getMember().getId(), ChannelType.ZIGZAG);
+        var credential = channelCredentialRepository.findByMemberIdAndChannelType(memberId("conn2"), ChannelType.ZIGZAG);
         assertThat(credential).isPresent();
+        assertThat(credential.get().getStatus()).isEqualTo(ChannelConnectionStatus.CONNECTED);
         assertThat(credential.get().getEncryptedAccessKey()).isNotEqualTo("my-access");
         assertThat(credential.get().getEncryptedSecretKey()).isNotEqualTo("my-secret");
     }
@@ -130,28 +107,11 @@ class ChannelConnectTest {
     }
 
     @Test
-    void 지그재그_API_에러가_나면_에러_메시지가_그대로_표시된다() throws Exception {
-        MockHttpSession session = AuthTestSupport.signUpAndLogin(mockMvc, "conn4", "password123", "가게4");
-        fakeClient().failWith(FakeZigzagOpenApiClient.authError());
-
-        mockMvc.perform(post("/channels/connect").session(session).with(csrf())
-                        .param("channelType", "ZIGZAG")
-                        .param("accessKey", "bad-access")
-                        .param("secretKey", "bad-secret"))
-                .andExpect(status().isOk())
-                .andExpect(content().string(containsString("invalid access key")));
-    }
-
-    @Test
-    void 내_정보와_상품_등록_화면에서_채널_연동_화면으로_이동할_수_있다() throws Exception {
+    void 내_정보에서_판매채널_목록으로_이동할_수_있다() throws Exception {
         MockHttpSession session = AuthTestSupport.signUpAndLogin(mockMvc, "conn5", "password123", "가게5");
 
         mockMvc.perform(get("/me").session(session))
                 .andExpect(status().isOk())
-                .andExpect(content().string(containsString("href=\"/channels/connect\"")));
-
-        mockMvc.perform(get("/products").session(session))
-                .andExpect(status().isOk())
-                .andExpect(content().string(containsString("href=\"/channels/connect\"")));
+                .andExpect(content().string(containsString("href=\"/channels\"")));
     }
 }

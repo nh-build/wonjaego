@@ -34,7 +34,7 @@ class ChannelCredentialServiceTest {
     void 저장한_키는_복호화하면_원래_값으로_돌아온다() {
         Long memberId = createMember("cred1");
 
-        channelCredentialService.saveOrUpdate(memberId, ChannelType.ZIGZAG, "my-access-key", "my-secret-key");
+        channelCredentialService.connect(memberId, ChannelType.ZIGZAG, "my-access-key", "my-secret-key");
 
         DecryptedCredential decrypted = channelCredentialService.getDecrypted(memberId, ChannelType.ZIGZAG);
         assertThat(decrypted.accessKey()).isEqualTo("my-access-key");
@@ -45,7 +45,7 @@ class ChannelCredentialServiceTest {
     void DB에는_평문이_아니라_암호화된_값만_저장된다() {
         Long memberId = createMember("cred2");
 
-        channelCredentialService.saveOrUpdate(memberId, ChannelType.ZIGZAG, "plain-access", "plain-secret");
+        channelCredentialService.connect(memberId, ChannelType.ZIGZAG, "plain-access", "plain-secret");
 
         ChannelCredential stored = channelCredentialRepository.findByMemberIdAndChannelType(memberId, ChannelType.ZIGZAG)
                 .orElseThrow();
@@ -59,8 +59,8 @@ class ChannelCredentialServiceTest {
     void 같은_채널에_다시_저장하면_기존_행을_갱신한다() {
         Long memberId = createMember("cred3");
 
-        channelCredentialService.saveOrUpdate(memberId, ChannelType.ZIGZAG, "old-access", "old-secret");
-        channelCredentialService.saveOrUpdate(memberId, ChannelType.ZIGZAG, "new-access", "new-secret");
+        channelCredentialService.connect(memberId, ChannelType.ZIGZAG, "old-access", "old-secret");
+        channelCredentialService.connect(memberId, ChannelType.ZIGZAG, "new-access", "new-secret");
 
         assertThat(channelCredentialRepository.count()).isEqualTo(1);
         DecryptedCredential decrypted = channelCredentialService.getDecrypted(memberId, ChannelType.ZIGZAG);
