@@ -13,20 +13,9 @@
     <link rel="stylesheet" as="style" crossorigin
           href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
 
-    <style>
-        :root {
-            --color-bg: #F7FBFE;
-            --color-card: #FFFFFF;
-            --color-card-border: #E8EEF4;
-            --color-tile: #E4F0FA;
-            --color-accent: #D2E7F5;
-            --color-button-bg: #C5E1F2;
-            --color-button-text: #2B3A45;
-            --color-text: #2B3A45;
-            --color-text-muted: #8A97A3;
-            --color-ok-text: #5AA06E;
-        }
+    <th:block th:replace="~{fragments/layout :: tokens}"></th:block>
 
+    <style>
         * { box-sizing: border-box; }
 
         html, body {
@@ -43,7 +32,6 @@
         .page {
             max-width: 480px;
             margin: 0 auto;
-            min-height: 100vh;
             padding: 20px 20px 40px;
         }
 
@@ -86,9 +74,9 @@
         .connect-hint-detail { margin-top: 4px; font-size: 0.8rem; color: var(--color-text-muted); }
     </style>
 </head>
-<body>
-    <div th:replace="~{fragments/layout :: appbar('판매채널', true, null, null, false)}"></div>
-    <div class="page">
+<body class="app-shell">
+    <div th:replace="~{fragments/layout :: appTopbar('판매채널', true, false)}"></div>
+    <div class="page app-content">
         <p class="page-subtitle">① 채널을 먼저 연동하세요</p>
 
         <div class="channel-cards">
@@ -113,5 +101,6 @@
             <p class="connect-hint-detail">상품 소스 / 주문 연동 중 선택</p>
         </div>
     </div>
+    <div th:replace="~{fragments/layout :: appTabbar('more')}"></div>
 </body>
 </html>

@@ -27,6 +27,11 @@ public class ProductCreateForm {
 
     private MultipartFile photo;
 
+    // Product-level cost basis (optional) — shown against price as margin/margin rate on the
+    // registration screen. Null unless the seller opts into the collapsible "원가 입력" section.
+    @DecimalMin(value = "0", message = "원가는 0 이상이어야 합니다.")
+    private BigDecimal costPrice;
+
     // Submitted as indexed request params (optionGroups[0].name, optionGroups[0].valuesText,
     // optionGroups[1].name, ...) by dynamically added/removed rows on the registration
     // screen — Spring's binder auto-grows this list from those indexed params, so it starts
@@ -45,6 +50,18 @@ public class ProductCreateForm {
     // matching option-value surcharges) but lets the seller override any of them before
     // submit. Blank/null defaults every combination to the base price (ADR 0008).
     private String pricesJson;
+
+    // JSON array of unique barcode strings, one per generated combination, in the same order
+    // as stocksJson/pricesJson — generated client-side by "바코드 생성하기" before submit.
+    // Blank/null means "not generated", which is valid (barcode assignment is optional).
+    private String barcodesJson;
+
+    // "옵션별 바코드 자동 생성" checkbox — when true, ProductService.create() assigns each
+    // variant without an explicit barcode (from barcodesJson) a server-generated sequential
+    // code. Defaults false here so raw-param submissions (existing tests) keep the old
+    // no-barcode behavior; the registration screen's newForm() sets this true so the checkbox
+    // renders checked by default.
+    private boolean autoGenerateBarcode;
 
     @Getter
     @Setter

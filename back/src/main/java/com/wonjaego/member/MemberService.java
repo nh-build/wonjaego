@@ -20,4 +20,17 @@ public class MemberService {
         Member member = new Member(username, passwordEncoder.encode(rawPassword), businessName);
         return memberRepository.save(member);
     }
+
+    @Transactional(readOnly = true)
+    public int getLowStockThreshold(Long memberId) {
+        return memberRepository.findById(memberId).orElseThrow().getLowStockThreshold();
+    }
+
+    @Transactional
+    public void updateLowStockThreshold(Long memberId, int lowStockThreshold) {
+        if (lowStockThreshold < 0) {
+            throw new InvalidLowStockThresholdException("재고 임박 기준은 0 이상이어야 합니다.");
+        }
+        memberRepository.getReferenceById(memberId).updateLowStockThreshold(lowStockThreshold);
+    }
 }

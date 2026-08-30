@@ -21,11 +21,15 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
 import org.springframework.context.annotation.Profile;
+import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
+// Explicit @Order so FillStockSeedRunner (order 2) always runs after this seed data
+// exists, regardless of Spring's default ApplicationRunner ordering.
 @Component
 @Profile("dev")
+@Order(1)
 @RequiredArgsConstructor
 public class BaseInitData implements ApplicationRunner {
 

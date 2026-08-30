@@ -1,102 +1,413 @@
 <!DOCTYPE html>
-<html xmlns:th="http://www.thymeleaf.org" data-theme="wonjaego">
+<html xmlns:th="http://www.thymeleaf.org">
 <head th:replace="~{fragments/layout :: head('상품 상세')}"></head>
-<body>
-    <div th:replace="~{fragments/layout :: appbar('상품 상세', true, null, null, true)}"></div>
+<body class="app-shell">
+    <div th:replace="~{fragments/layout :: appTopbar('상품 상세', true, false)}"></div>
 
-    <main class="flex-1 container mx-auto max-w-screen-md px-4 py-8">
-        <div class="flex items-start justify-between mb-2">
-            <div class="flex items-start gap-4">
-                <img th:if="${product.photoKey != null}" th:src="@{'/products/' + ${product.id} + '/photo'}"
-                     class="w-24 h-24 object-cover rounded-box" alt="">
-                <img th:if="${product.photoKey == null and product.externalImageUrl != null}"
-                     th:src="${product.externalImageUrl}"
-                     class="w-24 h-24 object-cover rounded-box" alt="">
-                <div th:if="${product.photoKey == null and product.externalImageUrl == null}"
-                     class="w-24 h-24 rounded-box bg-base-300 flex items-center justify-center text-base-content/40 text-sm shrink-0">
-                    사진 없음
-                </div>
-                <div>
-                    <h2 class="text-2xl font-bold" th:text="${product.name}"></h2>
-                    <p class="text-base-content/60">가격: <span th:text="${T(com.wonjaego.product.ProductVariant).formatPriceRange(variants)}"></span></p>
+    <main class="app-content">
+        <style>
+            :root {
+                /* 품절(재고 0)을 임박(--color-warn-text, 코랄)과 시각적으로 구분하는 전용
+                   빨강 — 공유 팔레트엔 없는, 이 스테퍼 숫자 하나만 쓰는 별도 액센트. */
+                --color-out-text: #C9524A;
+            }
+
+            html, body { background: var(--color-bg); }
+
+            .page { max-width: 480px; margin: 0 auto; padding: 20px 20px 40px; }
+
+            .global-error {
+                background: var(--color-warn-bg); color: var(--color-warn-text);
+                border-radius: 12px; padding: 12px 14px; margin-bottom: 16px; font-size: 0.85rem;
+            }
+
+            .hero-card {
+                background: var(--color-card); border: 1px solid var(--color-card-border);
+                border-radius: 18px; padding: 20px; margin-bottom: 20px;
+            }
+
+            .hero-top { display: flex; gap: 12px; align-items: flex-start; }
+
+            .hero-photo, .hero-photo-placeholder {
+                width: 84px; height: 84px; border-radius: 16px; object-fit: cover; flex-shrink: 0;
+                background: var(--color-tile); display: flex; align-items: center; justify-content: center;
+                color: var(--color-text-muted);
+            }
+
+            /* min-width:0 은 flex 자식 안에서 -webkit-line-clamp 말줄임이 실제로 동작하게
+               하는 핵심 — 없으면 flex 아이템의 기본 min-width:auto가 콘텐츠(긴 상품명) 크기로
+               칸을 늘려버려 줄바꿈/말줄임이 아예 일어나지 않는다. */
+            .hero-top-info { min-width: 0; flex: 1; }
+
+            .hero-channel {
+                display: inline-block; margin-bottom: 6px; background: var(--color-tile); color: var(--color-button-text);
+                border-radius: 999px; padding: 3px 10px; font-size: 0.75rem; font-weight: 600;
+            }
+
+            .hero-name {
+                margin: 0; font-size: 15px; font-weight: 800; line-height: 1.35;
+                display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+            }
+
+            .hero-top-right {
+                flex-shrink: 0; display: flex; flex-direction: column; align-items: flex-end; gap: 10px;
+            }
+
+            .hero-edit-button {
+                border: 1px solid var(--color-card-border); background: var(--color-card); border-radius: 999px;
+                padding: 7px 14px; font-size: 0.8rem; font-weight: 700; color: var(--color-text); white-space: nowrap;
+            }
+
+            .hero-price { font-size: 1.15rem; font-weight: 800; text-align: right; white-space: nowrap; }
+
+            .stepper-hint { margin: 0 2px 12px; font-size: 0.78rem; color: var(--color-text-muted); }
+
+            .section-title-row { display: flex; align-items: baseline; justify-content: space-between; margin: 0 2px 10px; }
+            .section-title-row .section-title { margin: 0; }
+            .section-title-stock { font-size: 0.8rem; color: var(--color-text-muted); }
+
+            .section-title { font-size: 0.95rem; font-weight: 700; margin: 0 2px 10px; }
+
+            .variant-rows {
+                background: var(--color-card); border: 1px solid var(--color-card-border); border-radius: 16px;
+                padding: 4px 14px; margin-bottom: 20px;
+            }
+
+            .variant-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 14px 0; }
+            .variant-row:not(:last-child) { border-bottom: 1px solid var(--color-card-border); }
+
+            .variant-row-left { min-width: 0; flex: 1; }
+            .variant-row-label { display: block; font-weight: 700; font-size: 0.9rem; }
+            .variant-row-price { display: block; margin-top: 2px; font-size: 0.8rem; color: var(--color-text-muted); }
+            .variant-row-meta { display: block; margin-top: 2px; font-size: 0.72rem; color: var(--color-text-muted); }
+
+            .stepper { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
+            .stepper-button {
+                width: 32px; height: 32px; border-radius: 999px; border: none;
+                background: var(--color-tile); color: var(--color-text); font-size: 1.1rem;
+                display: flex; align-items: center; justify-content: center; cursor: pointer;
+            }
+            .stepper-value {
+                width: 52px; text-align: center; font-weight: 700; font-size: 0.9rem;
+                border: 1px solid var(--color-card-border); border-radius: 10px; padding: 6px 4px;
+                font-family: inherit; color: var(--color-text); background: var(--color-card);
+            }
+            .stepper-value.normal { color: var(--color-ok-text); }
+            .stepper-value.low { color: var(--color-warn-text); }
+            .stepper-value.out { color: var(--color-out-text); }
+
+            .barcode-row {
+                display: flex; align-items: center; gap: 12px; background: var(--color-card);
+                border: 1px solid var(--color-card-border); border-radius: 16px; padding: 14px 16px;
+                margin-bottom: 20px; text-decoration: none; color: var(--color-text);
+            }
+            .barcode-row-icon {
+                width: 36px; height: 36px; border-radius: 999px; background: var(--color-tile);
+                display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+            }
+            .barcode-row-text { flex: 1; font-size: 0.9rem; font-weight: 700; }
+            .barcode-row-detail { display: block; margin-top: 2px; font-size: 0.78rem; font-weight: 400; color: var(--color-text-muted); }
+            .barcode-row-chevron { color: var(--color-text-muted); }
+
+            .movement-actions { display: flex; gap: 10px; margin-bottom: 28px; }
+            .movement-button {
+                flex: 1; display: flex; align-items: center; justify-content: center; gap: 6px;
+                border-radius: 14px; padding: 14px; font-weight: 700;
+                font-size: 0.9rem; text-decoration: none; border: 1px solid var(--color-card-border);
+                background: var(--color-card); color: var(--color-text);
+            }
+            .movement-button.in { background: var(--color-ok-bg); border-color: transparent; }
+            .movement-button.out { background: var(--color-warn-bg); border-color: transparent; }
+            .movement-button-icon { flex-shrink: 0; display: flex; }
+            .movement-button.in .movement-button-icon { color: var(--color-ok-text); }
+            .movement-button.out .movement-button-icon { color: var(--color-warn-text); }
+
+            .history-rows {
+                background: var(--color-card); border: 1px solid var(--color-card-border); border-radius: 16px;
+                padding: 4px 14px; margin-bottom: 20px;
+            }
+            .history-row { display: flex; align-items: flex-start; gap: 10px; padding: 12px 0; }
+            .history-row:not(:last-child) { border-bottom: 1px solid var(--color-card-border); }
+            .history-type {
+                flex-shrink: 0; border-radius: 999px; padding: 3px 9px; font-size: 0.72rem; font-weight: 700;
+                background: var(--color-tile); color: var(--color-button-text); margin-top: 1px;
+            }
+            .history-body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+            .history-option { font-weight: 700; font-size: 0.85rem; }
+            .history-detail { font-size: 0.78rem; color: var(--color-text-muted); }
+            .history-date { font-size: 0.72rem; color: var(--color-text-muted); }
+            .history-quantity { flex-shrink: 0; font-weight: 800; font-size: 0.9rem; }
+            .history-quantity.positive { color: var(--color-ok-text); }
+            .history-quantity.negative { color: var(--color-warn-text); }
+            .history-empty { text-align: center; color: var(--color-text-muted); font-size: 0.85rem; padding: 20px 0; }
+
+            .delete-button {
+                width: 100%; border: 1px solid var(--color-warn-text); background: none; color: var(--color-warn-text);
+                border-radius: 14px; padding: 14px; font-size: 0.9rem; font-weight: 700; cursor: pointer; font-family: inherit;
+            }
+
+            .save-bar {
+                position: sticky; bottom: 12px; display: flex; align-items: center; justify-content: space-between;
+                gap: 10px; background: var(--color-card); color: var(--color-text); border: 1px solid var(--color-card-border);
+                border-radius: 16px; padding: 14px 18px; margin-top: 16px; box-shadow: 0 8px 20px rgba(43, 58, 69, 0.16);
+            }
+            .save-bar.hidden { display: none; }
+            .save-bar-count { font-size: 0.85rem; font-weight: 600; }
+            .save-bar-button {
+                border: none; background: var(--color-button-bg); color: var(--color-button-text);
+                border-radius: 999px; padding: 8px 18px; font-size: 0.85rem; font-weight: 700; cursor: pointer; font-family: inherit;
+            }
+            .save-bar-error { font-size: 0.78rem; color: var(--color-warn-text); margin-top: 6px; }
+        </style>
+
+        <div class="page">
+            <div th:if="${error}" class="global-error">
+                <span th:text="${error}"></span>
+            </div>
+
+            <div class="hero-card">
+                <div class="hero-top">
+                    <img th:if="${product.photoKey != null}" th:src="@{'/products/' + ${product.id} + '/photo'}" class="hero-photo" alt="">
+                    <img th:if="${product.photoKey == null and product.externalImageUrl != null}" th:src="${product.externalImageUrl}" class="hero-photo" alt="">
+                    <div th:if="${product.photoKey == null and product.externalImageUrl == null}" class="hero-photo-placeholder">
+                        <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <rect x="3" y="3" width="18" height="18" rx="3"></rect>
+                            <circle cx="9" cy="9" r="1.5" fill="currentColor" stroke="none"></circle>
+                            <polyline points="21 15 15 9 5 19"></polyline>
+                        </svg>
+                    </div>
+
+                    <div class="hero-top-info">
+                        <span th:if="${product.externalChannelType != null}" class="hero-channel" th:text="${product.externalChannelType.label}"></span>
+                        <h1 class="hero-name" th:text="${product.name}"></h1>
+                    </div>
+
+                    <div class="hero-top-right">
+                        <a class="hero-edit-button" th:href="@{'/products/' + ${product.id} + '/edit'}">수정</a>
+                        <span class="hero-price" th:text="${T(com.wonjaego.product.ProductVariant).formatPriceRange(variants)}"></span>
+                    </div>
                 </div>
             </div>
-            <div class="flex gap-2">
-                <a th:href="@{'/products/' + ${product.id} + '/edit'}" class="btn btn-ghost btn-sm">상품 수정</a>
-                <a th:href="@{/products}" class="btn btn-ghost btn-sm">목록으로</a>
+
+            <p class="stepper-hint">− 와 + 로 조절하거나, 숫자를 눌러 직접 입력</p>
+
+            <div class="section-title-row">
+                <span class="section-title">옵션별 재고</span>
+                <span class="section-title-stock" th:text="'총 재고 ' + ${totalStock} + '개'"></span>
             </div>
+            <div id="variant-rows" class="variant-rows">
+                <div class="variant-row" th:each="variant : ${variants}"
+                     th:data-variant-id="${variant.id}" th:data-original="${variant.stockQuantity}"
+                     th:data-threshold="${variant.getEffectiveLowStockThreshold(lowStockThreshold)}">
+                    <div class="variant-row-left">
+                        <span class="variant-row-label" th:text="${variant.optionLabel.isEmpty()} ? ${product.name} : ${variant.optionLabel}"></span>
+                        <span class="variant-row-price" th:text="${#numbers.formatInteger(variant.price, 0, 'COMMA')} + '원'"></span>
+                        <span th:if="${variant.sku != null}" class="variant-row-meta" th:text="'SKU ' + ${variant.sku}"></span>
+                    </div>
+                    <div class="stepper">
+                        <button type="button" class="stepper-button stepper-minus" aria-label="재고 감소">−</button>
+                        <input type="text" inputmode="numeric" class="stepper-value" th:value="${variant.stockQuantity}">
+                        <button type="button" class="stepper-button stepper-plus" aria-label="재고 증가">+</button>
+                    </div>
+                </div>
+            </div>
+
+            <a class="barcode-row" th:href="@{'/products/' + ${product.id} + '/barcodes'}">
+                <span class="barcode-row-icon">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+                        <line x1="4" y1="5" x2="4" y2="19"></line>
+                        <line x1="8" y1="5" x2="8" y2="19"></line>
+                        <line x1="11" y1="5" x2="11" y2="19"></line>
+                        <line x1="14" y1="5" x2="14" y2="19"></line>
+                        <line x1="18" y1="5" x2="18" y2="19"></line>
+                        <line x1="21" y1="5" x2="21" y2="19"></line>
+                    </svg>
+                </span>
+                <span class="barcode-row-text">
+                    바코드 보기
+                    <span class="barcode-row-detail" th:text="'옵션별 ' + ${barcodeCount} + '개 · 인쇄 가능'"></span>
+                </span>
+                <span class="barcode-row-chevron">›</span>
+            </a>
+
+            <div class="movement-actions">
+                <a class="movement-button in" th:href="@{/movements/stock-in(productId=${product.id})}">
+                    <svg class="movement-button-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <line x1="12" y1="5" x2="12" y2="19"></line>
+                        <polyline points="6 13 12 19 18 13"></polyline>
+                    </svg>
+                    <span>입고하기</span>
+                </a>
+                <a class="movement-button out" th:href="@{/movements/stock-out(productId=${product.id})}">
+                    <svg class="movement-button-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <line x1="12" y1="19" x2="12" y2="5"></line>
+                        <polyline points="6 11 12 5 18 11"></polyline>
+                    </svg>
+                    <span>출고하기</span>
+                </a>
+            </div>
+
+            <div class="section-title">재고 변경 이력</div>
+            <div class="history-rows">
+                <div class="history-row" th:each="movement : ${movements}">
+                    <span class="history-type" th:text="${movement.type.label}"></span>
+                    <div class="history-body">
+                        <span class="history-option"
+                              th:text="${movement.variant.optionLabel.isEmpty()} ? ${product.name} : ${movement.variant.optionLabel}"></span>
+                        <span class="history-detail"
+                              th:text="(${movement.salesChannel != null} ? ${movement.salesChannel.name} : '-')
+                                       + (${movement.memo != null and !movement.memo.isEmpty()} ? (' · ' + ${movement.memo}) : '')"></span>
+                        <span class="history-date" th:text="${#temporals.format(movement.createdAt, 'yyyy-MM-dd HH:mm')}"></span>
+                    </div>
+                    <span class="history-quantity" th:classappend="${movement.quantityChange >= 0} ? 'positive' : 'negative'"
+                          th:text="(${movement.quantityChange >= 0} ? '+' : '') + ${movement.quantityChange}"></span>
+                </div>
+                <p th:if="${movements.isEmpty()}" class="history-empty">아직 재고 변경 기록이 없어요</p>
+            </div>
+
+            <form id="delete-form" th:action="@{'/products/' + ${product.id} + '/delete'}" method="post">
+                <button type="submit" class="delete-button">상품 삭제</button>
+            </form>
+
+            <div id="save-bar" class="save-bar hidden">
+                <span id="save-bar-count" class="save-bar-count"></span>
+                <button type="button" id="save-bar-button" class="save-bar-button">저장</button>
+            </div>
+            <p id="save-bar-error" class="save-bar-error"></p>
         </div>
-
-        <section class="mt-8">
-            <h3 class="text-lg font-semibold mb-3">옵션 조합 (변형)</h3>
-            <div class="card bg-base-200 shadow-sm">
-                <div class="card-body p-4">
-                    <div class="overflow-x-auto">
-                        <table class="table">
-                            <thead>
-                                <tr>
-                                    <th>옵션</th>
-                                    <th>가격</th>
-                                    <th>SKU</th>
-                                    <th>총재고</th>
-                                    <th>품절임박 기준</th>
-                                    <th class="text-right">관리</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <tr th:each="variant : ${variants}">
-                                    <td th:text="${#strings.isEmpty(variant.optionLabel)} ? ${product.name} : ${variant.optionLabel}"></td>
-                                    <td th:text="${variant.price}"></td>
-                                    <td th:text="${variant.sku}"></td>
-                                    <td><span class="badge" th:classappend="${variant.lowStock} ? 'badge-error badge-outline' : 'badge-ghost'" th:text="${variant.stockQuantity}"></span></td>
-                                    <td th:text="${variant.lowStockThreshold != null} ? ${variant.lowStockThreshold} : '기본값(' + ${variant.effectiveLowStockThreshold} + ')'"></td>
-                                    <td class="text-right">
-                                        <div class="flex gap-2 justify-end">
-                                            <a th:href="@{'/products/' + ${product.id} + '/variants/' + ${variant.id} + '/edit'}" class="btn btn-ghost btn-sm">수정</a>
-                                            <a th:href="@{/movements/new(variantId=${variant.id})}" class="btn btn-primary btn-sm">재고 기록</a>
-                                        </div>
-                                    </td>
-                                </tr>
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            </div>
-        </section>
-
-        <section class="mt-8">
-            <h3 class="text-lg font-semibold mb-3">재고 기록</h3>
-            <div class="card bg-base-200 shadow-sm">
-                <div class="card-body p-4">
-                    <div class="overflow-x-auto">
-                        <table class="table">
-                            <thead>
-                                <tr>
-                                    <th>구분</th>
-                                    <th>옵션</th>
-                                    <th>채널</th>
-                                    <th>수량 변화</th>
-                                    <th>메모</th>
-                                    <th>일시</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <tr th:each="movement : ${movements}">
-                                    <td><span class="badge badge-ghost" th:text="${movement.type.label}"></span></td>
-                                    <td th:text="${#strings.isEmpty(movement.variant.optionLabel)} ? '-' : ${movement.variant.optionLabel}"></td>
-                                    <td th:text="${movement.salesChannel != null} ? ${movement.salesChannel.name} : '-'"></td>
-                                    <td th:text="${movement.quantityChange}"></td>
-                                    <td th:text="${movement.memo}"></td>
-                                    <td class="text-base-content/60 text-sm" th:text="${movement.createdAt}"></td>
-                                </tr>
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            </div>
-        </section>
     </main>
+    <div th:replace="~{fragments/layout :: appTabbar('products')}"></div>
 
-    <footer th:replace="~{fragments/layout :: footer}"></footer>
+    <script th:inline="javascript">
+        var PRODUCT_ID = /*[[${product.id}]]*/ 0;
+    </script>
+    <script th:inline="none">
+        (function () {
+            var deleteForm = document.getElementById('delete-form');
+            if (deleteForm) {
+                deleteForm.addEventListener('submit', function (event) {
+                    if (!window.confirm('정말 삭제할까요?')) {
+                        event.preventDefault();
+                    }
+                });
+            }
+
+            var rowsContainer = document.getElementById('variant-rows');
+            var saveBar = document.getElementById('save-bar');
+            var saveBarCount = document.getElementById('save-bar-count');
+            var saveBarButton = document.getElementById('save-bar-button');
+            var saveBarError = document.getElementById('save-bar-error');
+            if (!rowsContainer || !saveBar || !saveBarCount || !saveBarButton) {
+                return;
+            }
+
+            var rows = Array.prototype.slice.call(rowsContainer.querySelectorAll('.variant-row')).map(function (row) {
+                return {
+                    row: row,
+                    variantId: Number(row.getAttribute('data-variant-id')),
+                    original: Number(row.getAttribute('data-original')),
+                    threshold: Number(row.getAttribute('data-threshold')),
+                    input: row.querySelector('.stepper-value'),
+                    minus: row.querySelector('.stepper-minus'),
+                    plus: row.querySelector('.stepper-plus'),
+                    typed: false
+                };
+            });
+
+            function currentValue(entry) {
+                var n = parseInt(entry.input.value, 10);
+                return isNaN(n) || n < 0 ? 0 : n;
+            }
+
+            function refreshRowStyle(entry) {
+                var value = currentValue(entry);
+                entry.input.classList.remove('normal', 'low', 'out');
+                if (value === 0) {
+                    entry.input.classList.add('out');
+                } else if (value <= entry.threshold) {
+                    entry.input.classList.add('low');
+                } else {
+                    entry.input.classList.add('normal');
+                }
+            }
+
+            function refreshSaveBar() {
+                var changed = rows.filter(function (entry) {
+                    return currentValue(entry) !== entry.original;
+                });
+                saveBar.classList.toggle('hidden', changed.length === 0);
+                saveBarCount.textContent = '변경사항 저장 ' + changed.length + '건';
+            }
+
+            function setValue(entry, next) {
+                if (next < 0) {
+                    next = 0;
+                }
+                entry.input.value = String(next);
+                refreshRowStyle(entry);
+                refreshSaveBar();
+            }
+
+            rows.forEach(function (entry) {
+                refreshRowStyle(entry);
+                entry.minus.addEventListener('click', function () {
+                    setValue(entry, currentValue(entry) - 1);
+                });
+                entry.plus.addEventListener('click', function () {
+                    setValue(entry, currentValue(entry) + 1);
+                });
+                entry.input.addEventListener('input', function () {
+                    entry.typed = true;
+                    entry.input.value = entry.input.value.replace(/\D/g, '');
+                    refreshRowStyle(entry);
+                    refreshSaveBar();
+                });
+            });
+
+            saveBarButton.addEventListener('click', function () {
+                var entries = [];
+                rows.forEach(function (entry) {
+                    var value = currentValue(entry);
+                    var delta = value - entry.original;
+                    if (delta === 0) {
+                        return;
+                    }
+                    var type;
+                    if (entry.typed) {
+                        type = delta > 0 ? 'ADJUSTMENT_IN' : 'ADJUSTMENT_OUT';
+                    } else {
+                        type = delta > 0 ? 'INBOUND' : 'ADJUSTMENT_OUT';
+                    }
+                    entries.push({variantId: entry.variantId, type: type, quantity: Math.abs(delta)});
+                });
+                if (entries.length === 0) {
+                    return;
+                }
+                saveBarButton.disabled = true;
+                saveBarError.textContent = '';
+                var csrfMeta = document.querySelector('meta[name="_csrf"]');
+                var csrfHeaderMeta = document.querySelector('meta[name="_csrf_header"]');
+                var headers = {'Content-Type': 'application/json'};
+                if (csrfMeta && csrfHeaderMeta) {
+                    headers[csrfHeaderMeta.getAttribute('content')] = csrfMeta.getAttribute('content');
+                }
+                fetch('/products/' + PRODUCT_ID + '/stock-adjustments', {
+                    method: 'POST',
+                    headers: headers,
+                    body: JSON.stringify({entries: entries})
+                }).then(function (response) {
+                    if (!response.ok) {
+                        return response.json().then(function (data) {
+                            throw new Error(data.error || '저장에 실패했습니다.');
+                        });
+                    }
+                    window.location.reload();
+                }).catch(function (err) {
+                    saveBarError.textContent = err.message;
+                    saveBarButton.disabled = false;
+                });
+            });
+        })();
+    </script>
 </body>
 </html>

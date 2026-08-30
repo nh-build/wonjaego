@@ -32,7 +32,10 @@ import lombok.NoArgsConstructor;
 })
 public class ProductVariant extends BaseEntity {
 
-    public static final int DEFAULT_LOW_STOCK_THRESHOLD = 5;
+    // Mirrors Member.DEFAULT_LOW_STOCK_THRESHOLD — the member-level setting is canonical,
+    // this just exists so a no-arg call (no member setting available, e.g. seed data) still
+    // has a sane fallback.
+    public static final int DEFAULT_LOW_STOCK_THRESHOLD = Member.DEFAULT_LOW_STOCK_THRESHOLD;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "member_id", nullable = false)
@@ -58,6 +61,11 @@ public class ProductVariant extends BaseEntity {
     // Null for a manually-registered variant (ADR 0006). Set for a variant imported via
     // 채널 연동 — the source channel's own item id, used to dedupe re-imports.
     private String externalItemId;
+
+    // Sequential unique code generated at registration-time (registration screen "바코드
+    // 생성하기"), distinct from sku — sku doubles as a scan-lookup key (ProductController
+    // /products/by-sku) but is member-entered and not guaranteed to exist or be barcode-shaped.
+    private String barcode;
 
     // ADR 0008 — price lives here, not on Product. Every variant always has one: computed
     // from base price + option-value surcharges at manual registration, or taken directly
@@ -99,12 +107,36 @@ public class ProductVariant extends BaseEntity {
         this.price = price;
     }
 
+    // Backs the product-edit screen's subset-extension matching (ProductService.update()) —
+    // when a new option group is added to an already-stocked product, the existing variant
+    // is kept (not recreated) and simply gains the new group's chosen value. Mutates the
+    // existing managed collection in place (clear + addAll) rather than reassigning the
+    // field, which is the safer pattern for a Hibernate-managed @ManyToMany collection.
+    public void replaceOptionValues(Set<OptionValue> optionValues) {
+        this.optionValues.clear();
+        this.optionValues.addAll(optionValues);
+    }
+
+    public void assignBarcode(String barcode) {
+        this.barcode = barcode;
+    }
+
     public int getEffectiveLowStockThreshold() {
-        return lowStockThreshold != null ? lowStockThreshold : DEFAULT_LOW_STOCK_THRESHOLD;
+        return getEffectiveLowStockThreshold(DEFAULT_LOW_STOCK_THRESHOLD);
+    }
+
+    // memberLowStockThreshold is the owning member's 설정 화면 값(Member.lowStockThreshold) —
+    // what this variant falls back to when it has no per-variant override of its own.
+    public int getEffectiveLowStockThreshold(int memberLowStockThreshold) {
+        return lowStockThreshold != null ? lowStockThreshold : memberLowStockThreshold;
     }
 
     public boolean isLowStock() {
-        return stockQuantity <= getEffectiveLowStockThreshold();
+        return isLowStock(DEFAULT_LOW_STOCK_THRESHOLD);
+    }
+
+    public boolean isLowStock(int memberLowStockThreshold) {
+        return stockQuantity <= getEffectiveLowStockThreshold(memberLowStockThreshold);
     }
 
     // Option values joined in the order their OptionGroups were created (e.g. "블랙 / S").

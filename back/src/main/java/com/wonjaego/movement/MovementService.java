@@ -12,7 +12,9 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -28,6 +30,16 @@ public class MovementService {
     private static final Set<MovementType> NEGATIVE_TYPES =
             EnumSet.of(MovementType.SALE, MovementType.DISPOSAL, MovementType.EXCHANGE_OUT, MovementType.ADJUSTMENT_OUT);
 
+    // Reasons the product-detail screen's quick stepper/direct-entry adjuster may use —
+    // narrower than POSITIVE_TYPES ∪ NEGATIVE_TYPES because RETURN/SALE/DISPOSAL/EXCHANGE_OUT
+    // describe events that belong to the dedicated 입고하기/출고하기/교환 flows, not a quick
+    // in-place stock correction from the detail page. There is no bare "OUTBOUND" reason in
+    // MovementType (only INBOUND has a plain positive counterpart) — a "−" stepper click is
+    // recorded as ADJUSTMENT_OUT, same as a typed decrease; only the "+" case distinguishes
+    // a stepper click (INBOUND) from a typed increase (ADJUSTMENT_IN).
+    private static final Set<MovementType> QUICK_ADJUST_TYPES =
+            EnumSet.of(MovementType.INBOUND, MovementType.ADJUSTMENT_IN, MovementType.ADJUSTMENT_OUT);
+
     private final MovementRepository movementRepository;
     private final ProductService productService;
     private final ProductVariantService productVariantService;
@@ -37,6 +49,14 @@ public class MovementService {
     public List<Movement> listForProduct(Long memberId, Long productId) {
         productService.getOwned(memberId, productId);
         return movementRepository.findAllByProductIdWithChannelAndVariant(productId);
+    }
+
+    private static final int RECENT_MOVEMENT_LIMIT = 20;
+
+    // Backs the 재고 탭's "최근 재고 이력" feed.
+    @Transactional(readOnly = true)
+    public List<Movement> listRecent(Long memberId) {
+        return movementRepository.findRecentByMemberId(memberId, PageRequest.of(0, RECENT_MOVEMENT_LIMIT));
     }
 
     // salesChannelId may be null — the 입고하기/출고하기 batch screens record movements with
@@ -107,6 +127,50 @@ public class MovementService {
             int quantityChange = signedQuantity(type, entry.getValue());
             entry.getKey().adjustStock(quantityChange);
             movements.add(new Movement(entry.getKey(), null, type, quantityChange, memo));
+        }
+        movementRepository.saveAll(movements);
+    }
+
+    public record StockAdjustmentEntry(Long variantId, MovementType type, int quantity) {
+    }
+
+    // Backs the product-detail screen's "변경사항 저장" bar — one movement per changed
+    // variant (never split into separate INBOUND+ADJUSTMENT_OUT rows for the same variant),
+    // type/quantity already resolved client-side (stepper vs. direct-entry, see
+    // QUICK_ADJUST_TYPES). Pre-validates the whole batch (ownership, allowed type, stock
+    // floor) before mutating anything, same reasoning as recordBatch().
+    @Transactional
+    public void recordQuickAdjustments(Long memberId, Long productId, List<StockAdjustmentEntry> entries) {
+        productService.getOwned(memberId, productId);
+        if (entries.isEmpty()) {
+            throw new InvalidStockMovementException("변경 사항이 없습니다.");
+        }
+        Map<Long, ProductVariant> variantsById = productVariantService.listForProduct(memberId, productId).stream()
+                .collect(Collectors.toMap(ProductVariant::getId, v -> v));
+
+        List<Movement> movements = new ArrayList<>();
+        for (StockAdjustmentEntry entry : entries) {
+            if (!QUICK_ADJUST_TYPES.contains(entry.type())) {
+                throw new InvalidStockMovementException("허용되지 않는 조정 사유입니다.");
+            }
+            if (entry.quantity() <= 0) {
+                throw new InvalidStockMovementException("수량은 1 이상이어야 합니다.");
+            }
+            ProductVariant variant = variantsById.get(entry.variantId());
+            if (variant == null) {
+                throw new InvalidStockMovementException("잘못된 옵션 조합입니다.");
+            }
+            // Every QUICK_ADJUST_TYPES member is already in POSITIVE_TYPES or NEGATIVE_TYPES
+            // (INBOUND/ADJUSTMENT_IN positive, ADJUSTMENT_OUT negative), so signedQuantity()
+            // resolves the sign directly from entry.type() — no special-casing needed here.
+            int quantityChange = signedQuantity(entry.type(), entry.quantity());
+            if (variant.getStockQuantity() + quantityChange < 0) {
+                throw new InsufficientStockException(variant.getDisplayName());
+            }
+            movements.add(new Movement(variant, null, entry.type(), quantityChange, "상품 상세 재고 조정"));
+        }
+        for (Movement movement : movements) {
+            movement.getVariant().adjustStock(movement.getQuantityChange());
         }
         movementRepository.saveAll(movements);
     }

@@ -39,6 +39,43 @@ function initStockMovementForm(options) {
         return (stockIn ? '+' : '-') + magnitude;
     }
 
+    // Shared thumbnail builder for both the search-result rows and the "선택된 상품" card —
+    // same imageUrl rule the product list screen uses (Product.resolveImageUrl(): local
+    // photo first, then a channel-hosted image for an imported product, else none at all).
+    // A present-but-broken URL (deleted file, dead remote link) falls back to the same
+    // placeholder via onerror, rather than showing a broken-image icon.
+    function placeholderThumbnailMarkup() {
+        return '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" '
+            + 'stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="3">'
+            + '</rect><circle cx="9" cy="9" r="1.5" fill="currentColor" stroke="none"></circle>'
+            + '<polyline points="21 15 15 9 5 19"></polyline></svg>';
+    }
+
+    function buildThumbnail(imageUrl, className) {
+        if (!imageUrl) {
+            var placeholder = document.createElement('div');
+            placeholder.className = className;
+            placeholder.innerHTML = placeholderThumbnailMarkup();
+            return placeholder;
+        }
+        var img = document.createElement('img');
+        img.className = className;
+        img.src = imageUrl;
+        img.alt = '';
+        img.onerror = function () {
+            // A DOM element swap (not outerHTML on img) so the replacement keeps whatever
+            // id the caller already set on img (e.g. #selected-product-thumb) — an
+            // outerHTML string here would silently drop it, breaking later
+            // getElementById() lookups the next time a product is selected.
+            var placeholder = document.createElement('div');
+            placeholder.className = className;
+            placeholder.id = img.id;
+            placeholder.innerHTML = placeholderThumbnailMarkup();
+            img.replaceWith(placeholder);
+        };
+        return img;
+    }
+
     function updateSubmitState() {
         var hasProduct = !!state.product;
         var hasType = !!typeInput.value;
@@ -136,6 +173,15 @@ function initStockMovementForm(options) {
     function selectProduct(data) {
         state.product = data;
         selectedSection.classList.remove('hidden');
+        // Re-queried fresh every call, not cached — a prior broken-image fallback (see
+        // buildThumbnail()'s onerror) may already have swapped the element for a new one,
+        // and a stale cached reference would silently no-op on .replaceWith() from then on.
+        var currentThumb = document.getElementById('selected-product-thumb');
+        if (currentThumb) {
+            var thumb = buildThumbnail(data.imageUrl, 'selected-product-thumb');
+            thumb.id = 'selected-product-thumb';
+            currentThumb.replaceWith(thumb);
+        }
         selectedName.textContent = data.productName;
         if (data.matchedSku) {
             selectedBarcode.textContent = '바코드 ' + data.matchedSku;
@@ -168,7 +214,14 @@ function initStockMovementForm(options) {
             var item = document.createElement('button');
             item.type = 'button';
             item.className = 'search-result-item';
-            item.textContent = result.name;
+
+            item.appendChild(buildThumbnail(result.imageUrl, 'search-result-thumb'));
+
+            var name = document.createElement('span');
+            name.className = 'search-result-name';
+            name.textContent = result.name;
+            item.appendChild(name);
+
             item.addEventListener('click', function () {
                 fetch('/products/' + result.id + '/stock-entry')
                     .then(function (res) { return res.json(); })

@@ -13,21 +13,16 @@
     <link rel="stylesheet" as="style" crossorigin
           href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
 
+    <th:block th:replace="~{fragments/layout :: tokens}"></th:block>
+
     <style>
         :root {
-            --color-bg: #F7FBFE;
-            --color-card: #FFFFFF;
-            --color-card-border: #E8EEF4;
-            --color-tile: #E4F0FA;
-            --color-accent: #D2E7F5;
-            --color-button-bg: #C5E1F2;
-            --color-button-text: #2B3A45;
-            --color-text: #2B3A45;
-            --color-text-muted: #8A97A3;
-            --color-warn-text: #E29388;
-            --color-warn-bg: #F7E3E0;
-            --color-ok-text: #5AA06E;
-            --color-ok-bg: #E3F1E8;
+            /* Quick Actions의 "등록/목록" 두 액션 전용 강조색 — 입고/출고는 이미 공유
+               good/warn 토큰을 그대로 쓰므로 여기 추가되는 건 이 파랑 하나뿐. */
+            --color-action-blue: #4E90C4;
+            /* 요약타일 전용 무채색 배경 — 카드(--color-card, 흰색)보다 살짝 짙어 타일임을
+               구분하면서도, 색이 있는 --color-tile과 달리 넓은 면에 색을 쓰지 않는다. */
+            --color-tile-neutral: #EEF3F7;
         }
 
         * {
@@ -47,19 +42,75 @@
             text-decoration: none;
         }
 
+        /* 홈은 appTopbar 프래그먼트를 렌더하지 않으므로, 그 프래그먼트의 <style> 안에만
+           정의돼 있는 .app-shell/.app-content 규칙도 여기서 직접 정의해야 앱 셸의
+           고정 헤더+스크롤 영역 레이아웃이 유지된다. */
+        .app-shell {
+            display: flex;
+            flex-direction: column;
+            height: 100dvh;
+        }
+
+        .app-content {
+            flex: 1 1 auto;
+            width: 100%;
+            min-height: 0;
+            overflow-y: auto;
+            -webkit-overflow-scrolling: touch;
+        }
+
         .page {
             max-width: 480px;
             margin: 0 auto;
-            min-height: 100vh;
-            padding: 24px 20px 96px;
+            padding: 8px 20px 40px;
         }
 
-        .tagline {
-            margin: 8px 0 24px;
+        .home-header {
+            flex: 0 0 auto;
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            max-width: 480px;
+            width: 100%;
+            margin: 0 auto;
+            padding: 20px 20px 4px;
+            background: var(--color-bg);
+            box-sizing: border-box;
+        }
+
+        .home-header-brand {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+        }
+
+        .home-hero-logo {
+            height: 96px;
+            width: auto;
+            object-fit: contain;
+        }
+
+        .home-hero-tagline {
+            margin: 8px 0 0;
             font-family: Georgia, 'Times New Roman', serif;
             font-size: 1rem;
             color: var(--color-text-muted);
             letter-spacing: 0.05em;
+        }
+
+        .icon-btn {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-width: 44px;
+            height: 44px;
+            border: none;
+            background: none;
+            border-radius: 999px;
+            color: var(--color-text);
+            cursor: pointer;
+            text-decoration: none;
+            font-family: inherit;
         }
 
         .summary-tiles {
@@ -70,7 +121,8 @@
         }
 
         .tile {
-            background: var(--color-tile);
+            background: var(--color-tile-neutral);
+            border: 1px solid var(--color-card-border);
             border-radius: 16px;
             padding: 16px 12px;
         }
@@ -78,6 +130,7 @@
         .tile-value {
             font-size: 1.75rem;
             font-weight: 700;
+            color: var(--color-text);
         }
 
         .tile-value.warn {
@@ -101,6 +154,11 @@
             margin: 0;
             font-size: 1.25rem;
             font-weight: 700;
+        }
+
+        .section-header h2.eyebrow {
+            font-size: 1.05rem;
+            letter-spacing: 0.04em;
         }
 
         .section-header a {
@@ -131,63 +189,66 @@
             width: 40px;
             height: 40px;
             border-radius: 999px;
-            background: var(--color-tile);
             display: flex;
             align-items: center;
             justify-content: center;
-            color: var(--color-text);
         }
+
+        .quick-action-icon.blue { background: var(--color-tile); color: var(--color-action-blue); }
+        .quick-action-icon.good { background: var(--color-ok-bg); color: var(--color-ok-text); }
+        .quick-action-icon.warn { background: var(--color-warn-bg); color: var(--color-warn-text); }
 
         .quick-action-label {
             font-size: 0.8rem;
             font-weight: 600;
-        }
-
-        .tab-bar {
-            position: fixed;
-            bottom: 0;
-            left: 0;
-            right: 0;
-            background: var(--color-card);
-            border-top: 1px solid var(--color-card-border);
-            display: flex;
-            justify-content: center;
-        }
-
-        .tab-bar-inner {
-            max-width: 480px;
-            width: 100%;
-            display: flex;
-        }
-
-        .tab-item {
-            flex: 1;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 4px;
-            padding: 10px 0 calc(10px + env(safe-area-inset-bottom, 0px));
-            font-size: 0.75rem;
-            color: var(--color-text-muted);
-        }
-
-        .tab-item.active {
             color: var(--color-text);
         }
 
-        .tab-icon {
-            width: 20px;
-            height: 20px;
-            border: 1.5px solid currentColor;
-            border-radius: 5px;
+        .low-stock-list { display: flex; flex-direction: column; gap: 10px; margin-bottom: 28px; }
+
+        .low-stock-row {
+            display: flex; align-items: center; gap: 12px;
+            background: var(--color-card); border: 1px solid var(--color-card-border);
+            border-radius: 16px; padding: 12px 14px;
+        }
+
+        .low-stock-thumb {
+            width: 44px; height: 44px; border-radius: 12px; flex-shrink: 0;
+            background: var(--color-tile-neutral); object-fit: cover;
+            display: flex; align-items: center; justify-content: center; color: var(--color-text-muted);
+        }
+
+        .low-stock-name {
+            flex: 1; min-width: 0; font-weight: 700; font-size: 0.9rem;
+            overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+        }
+
+        .low-stock-badge {
+            flex-shrink: 0; border-radius: 999px; padding: 4px 10px; font-size: 0.78rem; font-weight: 700;
+            white-space: nowrap; color: var(--color-warn-text); background: var(--color-warn-bg);
+        }
+
+        .low-stock-empty {
+            text-align: center; color: var(--color-text-muted); font-size: 0.85rem;
+            background: var(--color-card); border: 1px solid var(--color-card-border);
+            border-radius: 16px; padding: 24px 0; margin-bottom: 28px;
         }
     </style>
 </head>
-<body>
-    <div th:replace="~{fragments/layout :: appbar('홈', false, null, null, true)}"></div>
-    <div class="page">
-        <p class="tagline">All your stock, in ONE</p>
-
+<body class="app-shell">
+    <div class="home-header">
+        <div class="home-header-brand">
+            <img src="/logo_ver1.png" alt="원재고" class="home-hero-logo">
+            <p class="home-hero-tagline">All your stock, in ONE</p>
+        </div>
+        <a href="/settings" class="icon-btn" aria-label="설정">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="3"></circle>
+                <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+            </svg>
+        </a>
+    </div>
+    <div class="page app-content">
         <div class="summary-tiles">
             <div class="tile">
                 <div class="tile-value" th:text="${totalProductCount}"></div>
@@ -204,12 +265,12 @@
         </div>
 
         <div class="section-header">
-            <h2>빠른 작업</h2>
+            <h2 class="eyebrow">Quick Actions</h2>
         </div>
 
         <div class="quick-actions">
             <a href="/products/new" class="quick-action">
-                <span class="quick-action-icon">
+                <span class="quick-action-icon blue">
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
                         <line x1="12" y1="5" x2="12" y2="19"></line>
                         <line x1="5" y1="12" x2="19" y2="12"></line>
@@ -218,7 +279,7 @@
                 <span class="quick-action-label">상품 등록</span>
             </a>
             <a href="/movements/stock-in" class="quick-action">
-                <span class="quick-action-icon">
+                <span class="quick-action-icon good">
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                         <line x1="12" y1="5" x2="12" y2="19"></line>
                         <polyline points="6 13 12 19 18 13"></polyline>
@@ -227,7 +288,7 @@
                 <span class="quick-action-label">입고하기</span>
             </a>
             <a href="/movements/stock-out" class="quick-action">
-                <span class="quick-action-icon">
+                <span class="quick-action-icon warn">
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                         <line x1="12" y1="19" x2="12" y2="5"></line>
                         <polyline points="6 11 12 5 18 11"></polyline>
@@ -236,7 +297,7 @@
                 <span class="quick-action-label">출고하기</span>
             </a>
             <a href="/products" class="quick-action">
-                <span class="quick-action-icon">
+                <span class="quick-action-icon blue">
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                         <line x1="9" y1="6" x2="20" y2="6"></line>
                         <line x1="9" y1="12" x2="20" y2="12"></line>
@@ -249,28 +310,28 @@
                 <span class="quick-action-label">상품 목록</span>
             </a>
         </div>
-    </div>
 
-    <nav class="tab-bar">
-        <div class="tab-bar-inner">
-            <a href="/" class="tab-item active">
-                <span class="tab-icon"></span>
-                홈
-            </a>
-            <a href="/products" class="tab-item">
-                <span class="tab-icon"></span>
-                상품
-            </a>
-            <a href="#" class="tab-item">
-                <span class="tab-icon"></span>
-                분석
-            </a>
-            <a href="/me" class="tab-item">
-                <span class="tab-icon"></span>
-                설정
-            </a>
+        <div class="section-header">
+            <h2>재고 확인이 필요해요</h2>
+            <a th:if="${!lowStockItems.isEmpty()}" href="/products?stock=low">전체보기</a>
         </div>
-    </nav>
 
+        <div class="low-stock-list">
+            <a th:each="item : ${lowStockItems}" th:href="@{'/products/' + ${item.id()}}" class="low-stock-row">
+                <img th:if="${item.thumbnailUrl() != null}" th:src="${item.thumbnailUrl()}" class="low-stock-thumb" alt="">
+                <div th:if="${item.thumbnailUrl() == null}" class="low-stock-thumb">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <rect x="3" y="3" width="18" height="18" rx="3"></rect>
+                        <circle cx="9" cy="9" r="1.5" fill="currentColor" stroke="none"></circle>
+                        <polyline points="21 15 15 9 5 19"></polyline>
+                    </svg>
+                </div>
+                <span class="low-stock-name" th:text="${item.name()}"></span>
+                <span class="low-stock-badge" th:text="${item.stockLabel()}"></span>
+            </a>
+            <p th:if="${lowStockItems.isEmpty()}" class="low-stock-empty">재고 부족 상품이 없어요</p>
+        </div>
+    </div>
+    <div th:replace="~{fragments/layout :: appTabbar('home')}"></div>
 </body>
 </html>

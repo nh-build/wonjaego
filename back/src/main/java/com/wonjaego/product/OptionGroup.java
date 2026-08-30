@@ -28,4 +28,8 @@ public class OptionGroup extends BaseEntity {
         this.product = product;
         this.name = name;
     }
+
+    public void updateName(String name) {
+        this.name = name;
+    }
 }

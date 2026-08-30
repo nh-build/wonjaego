@@ -12,18 +12,9 @@
     <link rel="stylesheet" as="style" crossorigin
           href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
 
+    <th:block th:replace="~{fragments/layout :: tokens}"></th:block>
+
     <style>
-        :root {
-            --color-bg: #F7FBFE;
-            --color-card: #FFFFFF;
-            --color-card-border: #E9EEF3;
-            --color-tile: #E4F0FA;
-            --color-accent: #D2E7F5;
-            --color-button-bg: #C5E1F2;
-            --color-button-text: #2B3A45;
-            --color-text: #2B3A45;
-            --color-text-muted: #8A97A3;
-        }
 
         * {
             box-sizing: border-box;
@@ -45,7 +36,6 @@
         .page {
             max-width: 480px;
             margin: 0 auto;
-            min-height: 100vh;
             padding: 16px 20px 40px;
         }
 
@@ -133,7 +123,7 @@
             width: 6px;
             height: 6px;
             border-radius: 999px;
-            background: #5AA06E;
+            background: var(--color-ok-text);
         }
 
         .empty-channels {
@@ -205,9 +195,9 @@
         }
     </style>
 </head>
-<body>
-    <div th:replace="~{fragments/layout :: appbar('내 정보', false, null, null, true)}"></div>
-    <div class="page">
+<body class="app-shell">
+    <div th:replace="~{fragments/layout :: appTopbar('내 정보', true, false)}"></div>
+    <div class="page app-content">
         <div class="card profile-card">
             <div class="avatar" th:text="${#strings.substring(member.businessName, 0, 1)}"></div>
             <div class="profile-info">
@@ -295,5 +285,6 @@
 
         <span class="withdraw-link">회원 탈퇴</span>
     </div>
+    <div th:replace="~{fragments/layout :: appTabbar('more')}"></div>
 </body>
 </html>

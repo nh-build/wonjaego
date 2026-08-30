@@ -2,11 +2,17 @@ package com.wonjaego.product;
 
 import com.wonjaego.ai.NameSuggestionClient;
 import com.wonjaego.member.MemberPrincipal;
+import com.wonjaego.member.MemberService;
+import com.wonjaego.movement.InvalidStockMovementException;
 import com.wonjaego.movement.MovementService;
+import com.wonjaego.movement.MovementType;
 import com.wonjaego.storage.FileStorage;
 import jakarta.validation.Valid;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import org.springframework.core.io.Resource;
 import org.springframework.http.MediaType;
@@ -23,6 +29,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseBody;
+import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 @Controller
 @RequiredArgsConstructor
@@ -33,12 +40,36 @@ public class ProductController {
     private final MovementService movementService;
     private final FileStorage fileStorage;
     private final NameSuggestionClient nameSuggestionClient;
+    private final MemberService memberService;
 
     // 등록 전용 화면 — 상품 목록과 분리(등록은 등록에만 집중). GET /products는 목록 화면이다.
+    // 등록/수정 화면은 같은 폼 템플릿(products/product-form)을 공유한다 — 이 속성들이 그
+    // 템플릿이 두 모드를 구분하는 데 쓰는 전부다.
     @GetMapping("/products/new")
     public String newForm(Model model) {
-        model.addAttribute("form", new ProductCreateForm());
+        ProductCreateForm form = new ProductCreateForm();
+        form.setAutoGenerateBarcode(true);
+        model.addAttribute("form", form);
+        addCreateFormAttributes(model);
         return "products/new";
+    }
+
+    private void addCreateFormAttributes(Model model) {
+        model.addAttribute("isEdit", false);
+        model.addAttribute("hasPhoto", false);
+        model.addAttribute("productId", null);
+        model.addAttribute("variantSeeds", List.of());
+        model.addAttribute("formAction", "/products");
+        model.addAttribute("submitLabel", "등록하기");
+    }
+
+    private void addEditFormAttributes(Model model, Long productId, boolean hasPhoto, List<ProductEditVariantSeed> variantSeeds) {
+        model.addAttribute("isEdit", true);
+        model.addAttribute("hasPhoto", hasPhoto);
+        model.addAttribute("productId", productId);
+        model.addAttribute("variantSeeds", variantSeeds);
+        model.addAttribute("formAction", "/products/" + productId + "/edit");
+        model.addAttribute("submitLabel", "수정하기");
     }
 
     @GetMapping("/products")
@@ -77,19 +108,59 @@ public class ProductController {
                 return "redirect:/products";
             } catch (InvalidPhotoException e) {
                 bindingResult.rejectValue("photo", "invalid", e.getMessage());
-            } catch (InvalidStockDataException | InvalidPriceDataException e) {
+            } catch (InvalidStockDataException | InvalidPriceDataException | InvalidBarcodeDataException e) {
                 bindingResult.reject("invalid", e.getMessage());
             }
         }
+        addCreateFormAttributes(model);
         return "products/new";
     }
 
     @GetMapping("/products/{id}")
     public String detail(@AuthenticationPrincipal MemberPrincipal principal, @PathVariable Long id, Model model) {
         model.addAttribute("product", productService.getOwned(principal.getMemberId(), id));
-        model.addAttribute("variants", productVariantService.listForProduct(principal.getMemberId(), id));
+        List<ProductVariant> variants = productVariantService.listForProduct(principal.getMemberId(), id);
+        model.addAttribute("variants", variants);
         model.addAttribute("movements", movementService.listForProduct(principal.getMemberId(), id));
+        model.addAttribute("totalStock", variants.stream().mapToInt(ProductVariant::getStockQuantity).sum());
+        model.addAttribute("barcodeCount", variants.stream().filter(v -> v.getBarcode() != null).count());
+        model.addAttribute("lowStockThreshold", memberService.getLowStockThreshold(principal.getMemberId()));
         return "products/detail";
+    }
+
+    // Backs the detail screen's 옵션별 재고 stepper/direct-entry "변경사항 저장" bar — the
+    // client already resolved each changed variant to exactly one movement (stepper click
+    // vs. typed edit, see MovementService.QUICK_ADJUST_TYPES) before posting.
+    @PostMapping("/products/{id}/stock-adjustments")
+    @ResponseBody
+    public ResponseEntity<Map<String, String>> stockAdjustments(@AuthenticationPrincipal MemberPrincipal principal,
+                                                                  @PathVariable Long id,
+                                                                  @RequestBody StockAdjustmentRequest request) {
+        List<MovementService.StockAdjustmentEntry> entries = new ArrayList<>();
+        for (StockAdjustmentRequest.Entry entry : request.getEntries()) {
+            MovementType type;
+            try {
+                type = MovementType.valueOf(entry.getType());
+            } catch (IllegalArgumentException | NullPointerException e) {
+                return ResponseEntity.badRequest().body(Map.of("error", "허용되지 않는 조정 사유입니다."));
+            }
+            entries.add(new MovementService.StockAdjustmentEntry(entry.getVariantId(), type, entry.getQuantity()));
+        }
+        try {
+            movementService.recordQuickAdjustments(principal.getMemberId(), id, entries);
+        } catch (InvalidStockMovementException | InsufficientStockException e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        }
+        return ResponseEntity.ok(Map.of());
+    }
+
+    // 옵션별 바코드 리스트 화면 — view/print only (barcode generation stays a
+    // registration-time-only action, see products/new.html).
+    @GetMapping("/products/{id}/barcodes")
+    public String barcodes(@AuthenticationPrincipal MemberPrincipal principal, @PathVariable Long id, Model model) {
+        model.addAttribute("product", productService.getOwned(principal.getMemberId(), id));
+        model.addAttribute("variants", productVariantService.listForProduct(principal.getMemberId(), id));
+        return "products/barcodes";
     }
 
     @GetMapping("/products/{id}/photo")
@@ -126,7 +197,7 @@ public class ProductController {
             return List.of();
         }
         return productService.search(principal.getMemberId(), query).stream()
-                .map(product -> new ProductSearchResult(product.getId(), product.getName()))
+                .map(product -> new ProductSearchResult(product.getId(), product.getName(), product.resolveImageUrl()))
                 .toList();
     }
 
@@ -155,7 +226,7 @@ public class ProductController {
         List<StockEntryVariant> entryVariants = variants.stream()
                 .map(v -> new StockEntryVariant(v.getId(), v.getOptionLabel(), v.getSku(), v.getStockQuantity()))
                 .toList();
-        return new ProductStockEntryResponse(product.getId(), product.getName(), product.getPhotoKey() != null,
+        return new ProductStockEntryResponse(product.getId(), product.getName(), product.resolveImageUrl(),
                 matchedSku, entryVariants);
     }
 
@@ -173,9 +244,9 @@ public class ProductController {
     @GetMapping("/products/{id}/edit")
     public String editForm(@AuthenticationPrincipal MemberPrincipal principal, @PathVariable Long id, Model model) {
         Product product = productService.getOwned(principal.getMemberId(), id);
-        model.addAttribute("form", ProductEditForm.from(product));
-        model.addAttribute("productId", id);
-        model.addAttribute("hasPhoto", product.getPhotoKey() != null);
+        List<ProductVariant> variants = productVariantService.listForProduct(principal.getMemberId(), id);
+        model.addAttribute("form", ProductEditForm.from(product, variants));
+        addEditFormAttributes(model, id, product.getPhotoKey() != null, toEditVariantSeeds(variants));
         return "products/edit";
     }
 
@@ -194,21 +265,40 @@ public class ProductController {
                 return "redirect:/products/" + id;
             } catch (InvalidPhotoException e) {
                 bindingResult.rejectValue("photo", "invalid", e.getMessage());
+            } catch (InvalidPriceDataException | InvalidStockDataException | VariantHasMovementsException e) {
+                bindingResult.reject("invalid", e.getMessage());
             }
         }
-        model.addAttribute("productId", id);
-        model.addAttribute("hasPhoto", product.getPhotoKey() != null);
+        addEditFormAttributes(model, id, product.getPhotoKey() != null,
+                toEditVariantSeeds(productVariantService.listForProduct(principal.getMemberId(), id)));
         return "products/edit";
     }
 
+    private List<ProductEditVariantSeed> toEditVariantSeeds(List<ProductVariant> variants) {
+        return variants.stream()
+                .map(v -> new ProductEditVariantSeed(
+                        v.getId(),
+                        v.getOptionLabel(),
+                        v.getOptionValues().stream()
+                                .collect(Collectors.toMap(ov -> ov.getOptionGroup().getId(), OptionValue::getValue)),
+                        v.getPrice(),
+                        v.getStockQuantity(),
+                        v.getBarcode() != null))
+                .toList();
+    }
+
+    // ProductHasMovementsException bounces the seller back to the detail page they clicked
+    // delete from (via a flash attribute, ChannelController's established pattern) rather
+    // than to the product list — the error is only meaningful in the context they acted in.
     @PostMapping("/products/{id}/delete")
-    public String delete(@AuthenticationPrincipal MemberPrincipal principal, @PathVariable Long id, Model model) {
+    public String delete(@AuthenticationPrincipal MemberPrincipal principal, @PathVariable Long id,
+                          RedirectAttributes redirectAttributes) {
         try {
             productService.delete(principal.getMemberId(), id);
             return "redirect:/products";
         } catch (ProductHasMovementsException e) {
-            model.addAttribute("error", e.getMessage());
-            return list(principal, null, null, null, model);
+            redirectAttributes.addFlashAttribute("error", e.getMessage());
+            return "redirect:/products/" + id;
         }
     }
 }

@@ -89,6 +89,107 @@ class ProductListPageTest {
     }
 
     @Test
+    void sort를_지정하지_않으면_재고가_적은_상품부터_반환된다() throws Exception {
+        MockHttpSession session = AuthTestSupport.signUpAndLogin(mockMvc, "list2b", "password123", "가게2b");
+        mockMvc.perform(post("/products").session(session).with(csrf())
+                        .param("name", "재고많음B").param("price", "1000").param("stocksJson", "[20]"))
+                .andExpect(status().is3xxRedirection());
+        mockMvc.perform(post("/products").session(session).with(csrf())
+                        .param("name", "재고적음B").param("price", "1000").param("stocksJson", "[2]"))
+                .andExpect(status().is3xxRedirection());
+
+        MvcResult result = mockMvc.perform(get("/products/list-page").session(session))
+                .andExpect(status().isOk())
+                .andReturn();
+
+        String body = result.getResponse().getContentAsString();
+        assertThat(body.indexOf("재고적음B")).isLessThan(body.indexOf("재고많음B"));
+    }
+
+    @Test
+    void sort가_name이면_이름순으로_정렬된다() throws Exception {
+        MockHttpSession session = AuthTestSupport.signUpAndLogin(mockMvc, "list2c", "password123", "가게2c");
+        createProduct(session, "나중상품", "1000");
+        createProduct(session, "가나다상품", "1000");
+
+        MvcResult result = mockMvc.perform(get("/products/list-page").param("sort", "name").session(session))
+                .andExpect(status().isOk())
+                .andReturn();
+
+        String body = result.getResponse().getContentAsString();
+        assertThat(body.indexOf("가나다상품")).isLessThan(body.indexOf("나중상품"));
+    }
+
+    @Test
+    void 재고가_낮은_옵션이_있으면_배지는_low이고_임박_경고가_표시된다() throws Exception {
+        MockHttpSession session = AuthTestSupport.signUpAndLogin(mockMvc, "list7", "password123", "가게7");
+        mockMvc.perform(post("/products").session(session).with(csrf())
+                        .param("name", "임박상품")
+                        .param("price", "10000")
+                        .param("optionGroups[0].name", "색상")
+                        .param("optionGroups[0].valuesText", "블랙, 화이트")
+                        .param("stocksJson", "[1,20]"))
+                .andExpect(status().is3xxRedirection());
+
+        mockMvc.perform(get("/products/list-page").session(session))
+                .andExpect(status().isOk())
+                .andExpect(content().string(containsString("\"stockStyle\":\"low\"")))
+                .andExpect(content().string(containsString("\"warningLabel\":\"임박 1옵션\"")));
+    }
+
+    @Test
+    void 총재고가_넉넉해도_품절된_옵션이_있으면_배지는_ok이고_품절_경고가_표시된다() throws Exception {
+        MockHttpSession session = AuthTestSupport.signUpAndLogin(mockMvc, "list8", "password123", "가게8");
+        mockMvc.perform(post("/products").session(session).with(csrf())
+                        .param("name", "일부품절상품")
+                        .param("price", "10000")
+                        .param("optionGroups[0].name", "색상")
+                        .param("optionGroups[0].valuesText", "블랙, 화이트")
+                        .param("stocksJson", "[0,20]"))
+                .andExpect(status().is3xxRedirection());
+
+        mockMvc.perform(get("/products/list-page").session(session))
+                .andExpect(status().isOk())
+                .andExpect(content().string(containsString("\"stockStyle\":\"ok\"")))
+                .andExpect(content().string(containsString("\"warningLabel\":\"품절 1옵션\"")));
+    }
+
+    @Test
+    void 모든_옵션이_임박기준을_넘으면_배지에_경고가_없다() throws Exception {
+        MockHttpSession session = AuthTestSupport.signUpAndLogin(mockMvc, "list9", "password123", "가게9");
+        mockMvc.perform(post("/products").session(session).with(csrf())
+                        .param("name", "재고건강상품")
+                        .param("price", "10000")
+                        .param("optionGroups[0].name", "색상")
+                        .param("optionGroups[0].valuesText", "블랙, 화이트")
+                        .param("stocksJson", "[10,20]"))
+                .andExpect(status().is3xxRedirection());
+
+        mockMvc.perform(get("/products/list-page").session(session))
+                .andExpect(status().isOk())
+                .andExpect(content().string(containsString("\"stockStyle\":\"ok\"")))
+                .andExpect(content().string(containsString("\"warningLabel\":null")));
+    }
+
+    @Test
+    void 모든_옵션_재고가_0이면_배지는_out이고_경고가_없다() throws Exception {
+        MockHttpSession session = AuthTestSupport.signUpAndLogin(mockMvc, "list10", "password123", "가게10");
+        mockMvc.perform(post("/products").session(session).with(csrf())
+                        .param("name", "전체품절상품")
+                        .param("price", "10000")
+                        .param("optionGroups[0].name", "색상")
+                        .param("optionGroups[0].valuesText", "블랙, 화이트")
+                        .param("stocksJson", "[0,0]"))
+                .andExpect(status().is3xxRedirection());
+
+        mockMvc.perform(get("/products/list-page").session(session))
+                .andExpect(status().isOk())
+                .andExpect(content().string(containsString("\"stockStyle\":\"out\"")))
+                .andExpect(content().string(containsString("\"stockLabel\":\"품절\"")))
+                .andExpect(content().string(containsString("\"warningLabel\":null")));
+    }
+
+    @Test
     void 한_페이지에_20개씩_반환되고_다음_페이지_존재_여부가_hasNext에_반영된다() throws Exception {
         MockHttpSession session = AuthTestSupport.signUpAndLogin(mockMvc, "list3", "password123", "가게3");
         for (int i = 1; i <= 21; i++) {
@@ -138,7 +239,7 @@ class ProductListPageTest {
     }
 
     @Test
-    void 지그재그로_가져온_상품_개수와_채널_라벨이_표시된다() throws Exception {
+    void 지그재그로_가져온_상품에는_채널_라벨이_표시된다() throws Exception {
         MockHttpSession session = AuthTestSupport.signUpAndLogin(mockMvc, "list6", "password123", "가게6");
         Long memberId = memberRepository.findAll().stream()
                 .filter(m -> m.getUsername().equals("list6"))
@@ -167,11 +268,11 @@ class ProductListPageTest {
 
         mockMvc.perform(get("/products/list-page").session(session))
                 .andExpect(status().isOk())
-                .andExpect(content().string(containsString("\"importedCount\":1")))
                 .andExpect(content().string(containsString("\"channelLabel\":\"지그재그\"")));
 
         mockMvc.perform(get("/products").session(session))
                 .andExpect(status().isOk())
-                .andExpect(content().string(containsString("지그재그에서 1개 가져옴")));
+                .andExpect(content().string(containsString("지그재그")))
+                .andExpect(content().string(not(containsString("가져옴"))));
     }
 }

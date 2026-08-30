@@ -1,10 +1,10 @@
 <!DOCTYPE html>
 <html xmlns:th="http://www.thymeleaf.org" data-theme="wonjaego">
 <head th:replace="~{fragments/layout :: head('변형 수정')}"></head>
-<body>
-    <div th:replace="~{fragments/layout :: appbar('변형 수정', true, null, null, true)}"></div>
+<body class="app-shell">
+    <div th:replace="~{fragments/layout :: appTopbar('변형 수정', true, false)}"></div>
 
-    <main class="flex-1 container mx-auto max-w-screen-md px-4 py-16 flex justify-center">
+    <main class="app-content container mx-auto max-w-screen-md px-4 py-16 flex justify-center">
         <div class="card w-full max-w-sm bg-base-200 shadow-sm">
             <div class="card-body">
                 <h2 class="card-title justify-center text-2xl">변형 수정</h2>
@@ -29,7 +29,6 @@
             </div>
         </div>
     </main>
-
-    <footer th:replace="~{fragments/layout :: footer}"></footer>
+    <div th:replace="~{fragments/layout :: appTabbar('products')}"></div>
 </body>
 </html>

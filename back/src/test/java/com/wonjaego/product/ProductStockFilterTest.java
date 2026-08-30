@@ -127,6 +127,35 @@ class ProductStockFilterTest {
     }
 
     @Test
+    void stock_out은_일부_옵션만_품절이면_보이지_않고_전체_품절이어야_보인다() throws Exception {
+        MockHttpSession session = AuthTestSupport.signUpAndLogin(mockMvc, "seller7", "password123", "가게7");
+        mockMvc.perform(post("/products").session(session).with(csrf())
+                        .param("name", "일부품절상품")
+                        .param("price", "10000")
+                        .param("optionGroups[0].name", "색상")
+                        .param("optionGroups[0].valuesText", "블랙, 화이트")
+                        .param("stocksJson", "[0,20]"))
+                .andExpect(status().is3xxRedirection());
+        mockMvc.perform(post("/products").session(session).with(csrf())
+                        .param("name", "전체품절상품")
+                        .param("price", "10000")
+                        .param("optionGroups[0].name", "색상")
+                        .param("optionGroups[0].valuesText", "블랙, 화이트")
+                        .param("stocksJson", "[0,0]"))
+                .andExpect(status().is3xxRedirection());
+
+        mockMvc.perform(get("/products").param("stock", "out").session(session))
+                .andExpect(status().isOk())
+                .andExpect(content().string(containsString("전체품절상품")))
+                .andExpect(content().string(org.hamcrest.Matchers.not(containsString("일부품절상품"))));
+
+        mockMvc.perform(get("/products").param("stock", "low").session(session))
+                .andExpect(status().isOk())
+                .andExpect(content().string(containsString("일부품절상품")))
+                .andExpect(content().string(containsString("전체품절상품")));
+    }
+
+    @Test
     void 다른_회원의_상품은_필터_결과에_포함되지_않는다() throws Exception {
         MockHttpSession victimSession = AuthTestSupport.signUpAndLogin(mockMvc, "seller5", "password123", "가게5");
         createStockedProduct(victimSession, "피해자품절상품", "0");

@@ -13,23 +13,9 @@
     <link rel="stylesheet" as="style" crossorigin
           href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
 
-    <style>
-        :root {
-            --color-bg: #F7FBFE;
-            --color-card: #FFFFFF;
-            --color-card-border: #E8EEF4;
-            --color-tile: #E4F0FA;
-            --color-accent: #D2E7F5;
-            --color-button-bg: #C5E1F2;
-            --color-button-text: #2B3A45;
-            --color-text: #2B3A45;
-            --color-text-muted: #8A97A3;
-            --color-warn-text: #E29388;
-            --color-warn-bg: #F7E3E0;
-            --color-ok-text: #5AA06E;
-            --color-ok-bg: #E3F1E8;
-        }
+    <th:block th:replace="~{fragments/layout :: tokens}"></th:block>
 
+    <style>
         * { box-sizing: border-box; }
 
         html, body {
@@ -46,7 +32,6 @@
         .page {
             max-width: 480px;
             margin: 0 auto;
-            min-height: 100vh;
             padding: 20px 20px 40px;
         }
 
@@ -121,9 +106,9 @@
         .role-footnote { margin: 20px 2px 0; font-size: 0.78rem; color: var(--color-text-muted); line-height: 1.6; }
     </style>
 </head>
-<body>
-    <div th:replace="~{fragments/layout :: appbar(${channel.channelType().label} + ' 관리', true, null, null, false)}"></div>
-    <div class="page">
+<body class="app-shell">
+    <div th:replace="~{fragments/layout :: appTopbar(${channel.channelType().label} + ' 관리', true, false)}"></div>
+    <div class="page app-content">
         <div th:if="${error}" class="global-message error" th:text="${error}"></div>
         <div th:if="${importResult != null}" class="global-message success"
              th:text="${importResult.productCount()} + '개 상품을 가져왔어요!'"></div>
@@ -196,5 +181,6 @@
 
         <p class="role-footnote">※ 주문 연동으로 바꾸면 상품 불러오기가 사라져요.<br>상품 소스는 1개 채널만 지정할 수 있어요.</p>
     </div>
+    <div th:replace="~{fragments/layout :: appTabbar('more')}"></div>
 </body>
 </html>

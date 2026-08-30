@@ -83,9 +83,11 @@ class ProductVariantEditTest {
         assertThat(updated.getLowStockThreshold()).isNull();
         assertThat(updated.getEffectiveLowStockThreshold()).isEqualTo(5);
 
+        // 품절임박 기준 숫자는 화면에 텍스트로 노출하지 않는다(디버그 텍스트 아님) — 대신
+        // data-threshold 속성으로 클라이언트 스테퍼 색 로직에만 전달된다.
         mockMvc.perform(get("/products/" + productId).session(session))
                 .andExpect(status().isOk())
-                .andExpect(content().string(containsString("기본값(5)")));
+                .andExpect(content().string(containsString("data-threshold=\"5\"")));
     }
 
     @Test

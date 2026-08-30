@@ -1,10 +1,10 @@
 <!DOCTYPE html>
 <html xmlns:th="http://www.thymeleaf.org" data-theme="wonjaego">
 <head th:replace="~{fragments/layout :: head('주문 채널 태그 관리')}"></head>
-<body>
-    <div th:replace="~{fragments/layout :: appbar('주문 채널 태그 관리', true, null, null, true)}"></div>
+<body class="app-shell">
+    <div th:replace="~{fragments/layout :: appTopbar('주문 채널 태그 관리', true, false)}"></div>
 
-    <main class="flex-1 container mx-auto max-w-screen-md px-4 py-8">
+    <main class="app-content container mx-auto max-w-screen-md px-4 py-8">
         <h2 class="text-2xl font-bold mb-6">주문 채널 태그 관리</h2>
 
         <div th:if="${error}" class="alert alert-error mb-6">
@@ -58,7 +58,6 @@
             </div>
         </section>
     </main>
-
-    <footer th:replace="~{fragments/layout :: footer}"></footer>
+    <div th:replace="~{fragments/layout :: appTabbar('more')}"></div>
 </body>
 </html>

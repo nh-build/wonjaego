@@ -8,23 +8,16 @@
     <link rel="stylesheet" as="style" crossorigin
           href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
 
+    <th:block th:replace="~{fragments/layout :: tokens}"></th:block>
+
     <style>
         :root {
-            --color-bg: #F7FBFE;
-            --color-card: #FFFFFF;
-            --color-card-border: #E8EEF4;
-            --color-tile: #E4F0FA;
-            --color-accent: #D2E7F5;
-            --color-button-bg: #C5E1F2;
-            --color-button-text: #2B3A45;
-            --color-text: #2B3A45;
-            --color-text-muted: #8A97A3;
-            --color-warn-text: #E29388;
-            --color-warn-bg: #F7E3E0;
-            --color-ok-text: #5AA06E;
-            --color-ok-bg: #E3F1E8;
             --color-primary-text: var(--color-warn-text);
             --color-primary-bg: var(--color-warn-bg);
+            /* 검색창과 스캔 버튼 높이를 이 한 값으로 통일 — 검색창은 이 높이로 고정하고
+               내부를 수직 중앙 정렬, 스캔 버튼은 같은 높이의 정사각형으로 만들어 위아래
+               변이 항상 맞도록 한다. */
+            --field-height: 52px;
         }
 
         * { box-sizing: border-box; }
@@ -43,16 +36,16 @@
         .page {
             max-width: 480px;
             margin: 0 auto;
-            min-height: 100vh;
             padding: 20px 20px 40px;
         }
 
         .page-subtitle { margin: 16px 2px 4px; font-size: 0.85rem; color: var(--color-text-muted); }
 
-        .search-row { display: flex; gap: 10px; margin: 20px 0 4px; align-items: stretch; }
+        .search-row { display: flex; align-items: stretch; gap: 10px; margin: 20px 0 4px; }
 
         .search-input-wrapper {
-            flex: 1; display: flex; align-items: center; gap: 8px;
+            flex: 1; height: var(--field-height); box-sizing: border-box;
+            display: flex; align-items: center; gap: 8px;
             background: var(--color-card); border: 1px solid var(--color-card-border);
             border-radius: 14px; padding: 0 14px;
         }
@@ -60,19 +53,21 @@
         .search-input-wrapper svg { flex-shrink: 0; color: var(--color-text-muted); }
 
         #search-input {
-            border: none; outline: none; flex: 1; padding: 14px 0;
+            border: none; outline: none; flex: 1; height: 100%; padding: 0;
             font-size: 0.95rem; font-family: inherit; background: none; color: var(--color-text);
         }
 
-        .scan-button-wrapper { display: flex; flex-direction: column; align-items: center; gap: 4px; }
-
+        /* 아이콘 + "스캔" 라벨을 버튼 한 요소 안에 세로로 쌓는다 — 라벨이 버튼 밖으로
+           삐져나와 행 높이를 검색창보다 키우는 일이 없도록. */
         #scan-button {
-            width: 56px; height: 56px; border-radius: 14px; border: none;
+            flex-shrink: 0; width: var(--field-height); height: var(--field-height);
+            box-sizing: border-box; border-radius: 14px; border: none;
             background: var(--color-button-bg); color: var(--color-button-text);
-            display: flex; align-items: center; justify-content: center; cursor: pointer;
+            display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px;
+            cursor: pointer;
         }
 
-        .scan-label { font-size: 0.75rem; color: var(--color-text-muted); }
+        .scan-label { font-size: 0.62rem; line-height: 1; color: var(--color-button-text); }
 
         .search-results {
             background: var(--color-card); border: 1px solid var(--color-card-border);
@@ -82,12 +77,24 @@
         .search-results.hidden { display: none; }
 
         .search-result-item {
-            display: block; width: 100%; text-align: left; padding: 12px 14px;
+            display: flex; align-items: center; gap: 10px; width: 100%; text-align: left; padding: 10px 14px;
             border: none; background: none; font-size: 0.9rem; color: var(--color-text); cursor: pointer;
         }
 
         .search-result-item:not(:last-child) { border-bottom: 1px solid var(--color-card-border); }
         .search-result-item:hover { background: var(--color-tile); }
+
+        /* .selected-product-thumb와 같은 규칙(사진 있으면 object-fit:cover, 없으면 플레이스홀더
+           아이콘을 가운데 정렬) — buildThumbnail()이 <img> 또는 <div>를 이 클래스로 만든다. */
+        .search-result-thumb {
+            width: 36px; height: 36px; border-radius: 8px; background: var(--color-tile);
+            flex-shrink: 0; object-fit: cover; overflow: hidden;
+            display: flex; align-items: center; justify-content: center; color: var(--color-text-muted);
+        }
+
+        .search-result-name {
+            flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+        }
 
         h2.section-title { font-size: 0.95rem; font-weight: 700; margin: 20px 0 10px; }
 
@@ -101,7 +108,8 @@
 
         .selected-product-thumb {
             width: 44px; height: 44px; border-radius: 10px; background: var(--color-tile);
-            flex-shrink: 0; display: flex; align-items: center; justify-content: center;
+            flex-shrink: 0; object-fit: cover; overflow: hidden;
+            display: flex; align-items: center; justify-content: center;
             color: var(--color-text-muted);
         }
 
@@ -220,9 +228,9 @@
         .barcode-error { min-height: 1.2em; margin-top: 8px; font-size: 0.8rem; color: var(--color-warn-text); }
     </style>
 </head>
-<body>
-    <div th:replace="~{fragments/layout :: appbar('출고하기', true, null, null, false)}"></div>
-    <div class="page">
+<body class="app-shell">
+    <div th:replace="~{fragments/layout :: appTopbar('출고하기', true, false)}"></div>
+    <div class="page app-content">
         <p class="page-subtitle">재고에서 뺍니다 (−)</p>
 
         <div class="search-row">
@@ -233,30 +241,28 @@
                 </svg>
                 <input type="text" id="search-input" placeholder="상품명 검색" autocomplete="off">
             </div>
-            <div class="scan-button-wrapper">
-                <button type="button" id="scan-button" aria-label="바코드 스캔">
-                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
-                        <line x1="4" y1="5" x2="4" y2="19"></line>
-                        <line x1="8" y1="5" x2="8" y2="19"></line>
-                        <line x1="11" y1="5" x2="11" y2="19"></line>
-                        <line x1="14" y1="5" x2="14" y2="19"></line>
-                        <line x1="18" y1="5" x2="18" y2="19"></line>
-                        <line x1="21" y1="5" x2="21" y2="19"></line>
-                    </svg>
-                </button>
+            <button type="button" id="scan-button" aria-label="바코드 스캔">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+                    <line x1="4" y1="5" x2="4" y2="19"></line>
+                    <line x1="8" y1="5" x2="8" y2="19"></line>
+                    <line x1="11" y1="5" x2="11" y2="19"></line>
+                    <line x1="14" y1="5" x2="14" y2="19"></line>
+                    <line x1="18" y1="5" x2="18" y2="19"></line>
+                    <line x1="21" y1="5" x2="21" y2="19"></line>
+                </svg>
                 <span class="scan-label">스캔</span>
-            </div>
+            </button>
         </div>
         <div id="search-results" class="search-results hidden"></div>
 
         <h2 class="section-title">선택된 상품</h2>
         <div id="selected-product-section" class="hidden">
             <div class="selected-product-card">
-                <div class="selected-product-thumb">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M6 3h12l-1.5 5H7.5L6 3z"></path>
-                        <path d="M12 8v13"></path>
-                        <path d="M4 21l3-10h10l3 10"></path>
+                <div class="selected-product-thumb" id="selected-product-thumb">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <rect x="3" y="3" width="18" height="18" rx="3"></rect>
+                        <circle cx="9" cy="9" r="1.5" fill="currentColor" stroke="none"></circle>
+                        <polyline points="21 15 15 9 5 19"></polyline>
                     </svg>
                 </div>
                 <div class="selected-product-info">
@@ -295,6 +301,7 @@
             <button type="submit" id="submit-button" disabled>출고 처리</button>
         </form>
     </div>
+    <div th:replace="~{fragments/layout :: appTabbar('stock')}"></div>
 
     <div id="scanner-modal" class="scanner-modal hidden">
         <div class="scanner-modal-content">

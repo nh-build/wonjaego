@@ -1,12 +1,13 @@
 <!DOCTYPE html>
-<html lang="ko">
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>원재고</title>
     <link rel="manifest" href="/manifest.json">
-    <meta name="theme-color" content="#FEF7F6">
+    <meta name="theme-color" content="#F7FBFE">
     <link rel="icon" href="/icons/icon-192.png">
+    <th:block th:replace="~{fragments/layout :: tokens}"></th:block>
     <script>
         // Runs synchronously in <head>, before the body is painted — a repeat visit
         // within the same session bounces straight to "/" instead of flashing the splash.
@@ -19,7 +20,7 @@
             margin: 0;
             padding: 0;
             height: 100%;
-            background: #FEF7F6;
+            background: var(--bg);
         }
 
         .splash {
@@ -42,7 +43,7 @@
             margin: 0;
             font-family: Georgia, 'Times New Roman', serif;
             font-size: 1.5rem;
-            color: #2B2B2B;
+            color: var(--ink);
             letter-spacing: 0.05em;
             white-space: pre;
         }

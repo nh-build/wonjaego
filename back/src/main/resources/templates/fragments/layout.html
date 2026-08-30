@@ -1,5 +1,40 @@
 <!DOCTYPE html>
 <html xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+
+<!-- Single source of truth for every screen's palette. Pages that render the shared
+     head(title) fragment below get this for free; a page with its own hand-rolled <head>
+     (splash.html, and any other standalone head) pulls it in explicitly via
+     th:replace="~{fragments/layout :: tokens}". Never redefine these hex values locally —
+     that duplication (slightly-drifted copies like #E9EEF3 vs #E8EEF4 across pages) is
+     exactly what made the app's background/card colors inconsistent screen to screen. -->
+<th:block th:fragment="tokens">
+<style>
+    :root {
+        --bg: #F7FBFE; --card: #FFFFFF; --line: #E9EEF3;
+        --face: #E4F0FA; --point: #D2E7F5; --btn: #C5E1F2;
+        --ink: #2B3A45; --sub: #8A97A3;
+        --warn: #E29388; --warn-bg: #F7E3E0; --good: #5AA06E; --good-bg: #E3F1E8;
+
+        /* Aliases for the longer names most existing per-page styles already call
+           var(--color-xxx) with — keeps every template's call sites working unchanged
+           while the values themselves now come from one place instead of a copy per page. */
+        --color-bg: var(--bg);
+        --color-card: var(--card);
+        --color-card-border: var(--line);
+        --color-tile: var(--face);
+        --color-accent: var(--point);
+        --color-button-bg: var(--btn);
+        --color-button-text: var(--ink);
+        --color-text: var(--ink);
+        --color-text-muted: var(--sub);
+        --color-warn-text: var(--warn);
+        --color-warn-bg: var(--warn-bg);
+        --color-ok-text: var(--good);
+        --color-ok-bg: var(--good-bg);
+    }
+</style>
+</th:block>
+
 <head th:fragment="head(title)">
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -8,7 +43,7 @@
     <title th:text="${title} + ' - 원재고'">원재고</title>
 
     <link rel="manifest" href="/manifest.json">
-    <meta name="theme-color" content="#AEDAF3">
+    <meta name="theme-color" content="#F7FBFE">
     <link rel="icon" href="/icons/icon-192.png">
     <link rel="apple-touch-icon" href="/icons/icon-192.png">
 
@@ -17,38 +52,45 @@
     <link href="https://cdn.jsdelivr.net/npm/daisyui@5" rel="stylesheet" type="text/css">
     <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
 
+    <th:block th:replace="~{fragments/layout :: tokens}"></th:block>
+
     <style>
+        /* daisyUI (login/signup/home/variant-edit/movements-new/channels-tags/channels-edit)
+           reads its own --color-* namespace, not ours directly — every one of daisyUI's
+           semantic colors is repointed at the tokens above so those screens land on the same
+           palette as every hand-styled page instead of daisyUI's separate default theme
+           (that mismatch was the source of the leftover beige/dark-blue screens). */
         [data-theme="wonjaego"] {
             color-scheme: light;
 
-            --color-base-100: #FEF7F6;
-            --color-base-200: #E6F2FB;
-            --color-base-300: #D3E7F5;
-            --color-base-content: #33434F;
+            --color-base-100: var(--bg);
+            --color-base-200: var(--card);
+            --color-base-300: var(--line);
+            --color-base-content: var(--ink);
 
-            --color-primary: #AEDAF3;
-            --color-primary-content: #2F4353;
+            --color-primary: var(--btn);
+            --color-primary-content: var(--ink);
 
-            --color-secondary: #E6F2FB;
-            --color-secondary-content: #2F4353;
+            --color-secondary: var(--face);
+            --color-secondary-content: var(--ink);
 
-            --color-accent: #7FB8DE;
-            --color-accent-content: #F8FCFF;
+            --color-accent: var(--point);
+            --color-accent-content: var(--ink);
 
-            --color-neutral: #33434F;
-            --color-neutral-content: #F8FCFF;
+            --color-neutral: var(--ink);
+            --color-neutral-content: var(--card);
 
-            --color-info: #6FB1E0;
-            --color-info-content: #1B2A33;
+            --color-info: var(--face);
+            --color-info-content: var(--ink);
 
-            --color-success: #86D9B9;
-            --color-success-content: #123C2C;
+            --color-success: var(--good-bg);
+            --color-success-content: var(--good);
 
-            --color-warning: #F5D98B;
-            --color-warning-content: #4A3707;
+            --color-warning: var(--warn-bg);
+            --color-warning-content: var(--warn);
 
-            --color-error: #F3AEB0;
-            --color-error-content: #4A1113;
+            --color-error: var(--warn-bg);
+            --color-error-content: var(--warn);
 
             --radius-selector: 1rem;
             --radius-field: 0.5rem;
@@ -76,24 +118,42 @@
     </script>
 </head>
 <body class="min-h-screen flex flex-col bg-base-100 text-base-content">
-    <div th:fragment="appbar(title, showBack, rightHref, rightLabel, showMenu)" class="appbar">
+    <div th:fragment="appTopbar(title, showBack, showLogo)" class="app-topbar">
         <style>
-            /* 이 스타일은 appbar 프래그먼트 자체에 포함돼 있어 — daisyUI 테마를 쓰는 화면이든
-               자체 :root 팔레트를 쓰는 화면이든 상관없이 어디서 호출해도 동일하게 렌더된다. */
-            .appbar {
-                --appbar-bg: #F7FBFE;
-                --appbar-ink: #2B3A45;
+            /* 앱 셸의 상단바 — daisyUI 테마 화면이든 자체 :root 팔레트 화면이든
+               어디서 호출해도 동일하게 렌더되도록 프래그먼트 자체에 스타일을 포함한다.
+               .app-shell / .app-content 는 셸을 쓰는 모든 화면에 공통으로 필요해서 여기 같이 둔다 —
+               appTopbar 는 셸을 쓰는 화면에서 항상 가장 먼저 호출되기 때문. */
+            .app-shell {
+                display: flex;
+                flex-direction: column;
+                height: 100dvh;
+            }
+            .app-content {
+                flex: 1 1 auto;
+                width: 100%;
+                min-height: 0;
+                overflow-y: auto;
+                -webkit-overflow-scrolling: touch;
+            }
+
+            .app-topbar {
+                --app-topbar-bg: var(--card);
+                --app-topbar-ink: var(--ink);
+                --app-topbar-line: var(--line);
+                flex: 0 0 auto;
                 display: grid;
                 grid-template-columns: 48px 1fr 48px;
                 align-items: center;
                 height: 56px;
                 padding: 0 8px;
-                background: var(--appbar-bg);
+                background: var(--app-topbar-bg);
+                border-bottom: 1px solid var(--app-topbar-line);
             }
 
-            .appbar-left { justify-self: start; }
+            .app-topbar-left { justify-self: start; }
 
-            .appbar-right {
+            .app-topbar-right {
                 justify-self: end;
                 display: flex;
                 align-items: center;
@@ -101,17 +161,17 @@
                 position: relative;
             }
 
-            .appbar-title {
+            .app-topbar-title {
                 text-align: center;
                 font-size: 18px;
                 font-weight: 800;
-                color: var(--appbar-ink);
+                color: var(--app-topbar-ink);
                 white-space: nowrap;
                 overflow: hidden;
                 text-overflow: ellipsis;
             }
 
-            .icon-btn, .appbar-action {
+            .icon-btn {
                 display: flex;
                 align-items: center;
                 justify-content: center;
@@ -120,103 +180,126 @@
                 border: none;
                 background: none;
                 border-radius: 999px;
-                color: var(--appbar-ink);
+                color: var(--app-topbar-ink);
                 cursor: pointer;
                 text-decoration: none;
-                font-size: 0.9rem;
-                font-weight: 700;
                 font-family: inherit;
             }
 
-            .appbar-menu-dropdown {
-                position: absolute;
-                top: 48px;
-                right: 0;
-                background: #FFFFFF;
-                border: 1px solid #E9EEF3;
-                border-radius: 12px;
-                padding: 6px;
-                min-width: 140px;
-                box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
-                z-index: 20;
+            .app-topbar-logo-link {
                 display: flex;
-                flex-direction: column;
+                align-items: center;
+                height: 100%;
             }
 
-            .appbar-menu-dropdown.hidden { display: none; }
-
-            .appbar-menu-dropdown a, .appbar-menu-dropdown button {
+            .app-topbar-logo {
+                height: 28px;
+                width: auto;
                 display: block;
-                width: 100%;
-                text-align: left;
-                padding: 8px 10px;
-                border-radius: 8px;
-                border: none;
-                background: none;
-                font-family: inherit;
-                font-size: 0.9rem;
-                color: var(--appbar-ink);
-                cursor: pointer;
-            }
-
-            .appbar-menu-dropdown a:hover, .appbar-menu-dropdown button:hover {
-                background: #E4F0FA;
             }
         </style>
-        <div class="appbar-left">
+        <div class="app-topbar-left">
             <a th:if="${showBack}" href="/" class="icon-btn" aria-label="홈">
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
                      stroke-linecap="round" stroke-linejoin="round">
                     <polyline points="15 18 9 12 15 6"></polyline>
                 </svg>
             </a>
+            <a th:if="${showLogo}" href="/" class="app-topbar-logo-link" aria-label="홈">
+                <img src="/logo_ver1.png" alt="원재고" class="app-topbar-logo">
+            </a>
         </div>
-        <div class="appbar-title" th:text="${title}"></div>
-        <div class="appbar-right">
-            <a th:if="${rightLabel}" th:href="@{${rightHref}}" class="appbar-action" th:text="${rightLabel}"></a>
-            <div th:if="${showMenu}" class="appbar-menu">
-                <button type="button" class="icon-btn appbar-menu-button" aria-label="메뉴">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
-                        <line x1="3" y1="6" x2="21" y2="6"></line>
-                        <line x1="3" y1="12" x2="21" y2="12"></line>
-                        <line x1="3" y1="18" x2="21" y2="18"></line>
-                    </svg>
-                </button>
-                <div class="appbar-menu-dropdown hidden">
-                    <a sec:authorize="isAuthenticated()" href="/">홈</a>
-                    <a sec:authorize="isAuthenticated()" href="/products">상품</a>
-                    <a sec:authorize="isAuthenticated()" href="/channels">판매 채널</a>
-                    <a sec:authorize="isAuthenticated()" href="/me">내 정보</a>
-                    <form sec:authorize="isAuthenticated()" th:action="@{/logout}" method="post">
-                        <button type="submit">로그아웃</button>
-                    </form>
-                    <a sec:authorize="!isAuthenticated()" href="/login">로그인</a>
-                    <a sec:authorize="!isAuthenticated()" href="/signup">회원가입</a>
-                </div>
-            </div>
+        <div class="app-topbar-title" th:text="${showLogo} ? '' : ${title}"></div>
+        <div class="app-topbar-right">
+            <a href="/settings" class="icon-btn" aria-label="설정">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="12" cy="12" r="3"></circle>
+                    <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+                </svg>
+            </a>
         </div>
-        <script th:inline="none">
-            (function () {
-                document.querySelectorAll('.appbar-menu').forEach(function (menu) {
-                    var button = menu.querySelector('.appbar-menu-button');
-                    var dropdown = menu.querySelector('.appbar-menu-dropdown');
-                    if (!button || !dropdown || button.dataset.appbarBound) {
-                        return;
-                    }
-                    button.dataset.appbarBound = 'true';
-                    button.addEventListener('click', function (event) {
-                        event.stopPropagation();
-                        dropdown.classList.toggle('hidden');
-                    });
-                    document.addEventListener('click', function (event) {
-                        if (!dropdown.classList.contains('hidden') && !menu.contains(event.target)) {
-                            dropdown.classList.add('hidden');
-                        }
-                    });
-                });
-            })();
-        </script>
     </div>
+    <nav th:fragment="appTabbar(activeTab)" class="app-tabbar">
+        <style>
+            .app-tabbar {
+                flex: 0 0 auto;
+                display: flex;
+                background: var(--card);
+                border-top: 1px solid var(--line);
+                padding-bottom: env(safe-area-inset-bottom);
+            }
+
+            .app-tab {
+                flex: 1;
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                gap: 2px;
+                padding: 8px 0 6px;
+                font-size: 0.7rem;
+                font-weight: 600;
+                color: var(--sub);
+                text-decoration: none;
+            }
+
+            .app-tab svg { width: 20px; height: 20px; }
+
+            .app-tab-icon {
+                width: 32px;
+                height: 24px;
+                border-radius: 12px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+            }
+
+            .app-tab.active { color: var(--point); }
+            .app-tab.active .app-tab-icon { background: var(--face); }
+        </style>
+        <a href="/" class="app-tab" th:classappend="${activeTab == 'home'} ? 'active' : ''">
+            <span class="app-tab-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M3 11l9-8 9 8"></path>
+                    <path d="M5 10v10a1 1 0 0 0 1 1h3v-6a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v6h3a1 1 0 0 0 1-1V10"></path>
+                </svg>
+            </span>
+            <span>홈</span>
+        </a>
+        <a href="/products" class="app-tab" th:classappend="${activeTab == 'products'} ? 'active' : ''">
+            <span class="app-tab-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <line x1="9" y1="6" x2="20" y2="6"></line>
+                    <line x1="9" y1="12" x2="20" y2="12"></line>
+                    <line x1="9" y1="18" x2="20" y2="18"></line>
+                    <circle cx="4" cy="6" r="1.2" fill="currentColor" stroke="none"></circle>
+                    <circle cx="4" cy="12" r="1.2" fill="currentColor" stroke="none"></circle>
+                    <circle cx="4" cy="18" r="1.2" fill="currentColor" stroke="none"></circle>
+                </svg>
+            </span>
+            <span>상품</span>
+        </a>
+        <a href="/movements" class="app-tab" th:classappend="${activeTab == 'stock'} ? 'active' : ''">
+            <span class="app-tab-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M8 4v13"></path>
+                    <path d="M4 13l4 4 4-4"></path>
+                    <path d="M16 20V7"></path>
+                    <path d="M20 11l-4-4-4 4"></path>
+                </svg>
+            </span>
+            <span>재고</span>
+        </a>
+        <a href="/more" class="app-tab" th:classappend="${activeTab == 'more'} ? 'active' : ''">
+            <span class="app-tab-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="5" cy="12" r="1.5" fill="currentColor" stroke="none"></circle>
+                    <circle cx="12" cy="12" r="1.5" fill="currentColor" stroke="none"></circle>
+                    <circle cx="19" cy="12" r="1.5" fill="currentColor" stroke="none"></circle>
+                </svg>
+            </span>
+            <span>더보기</span>
+        </a>
+    </nav>
     <footer th:fragment="footer" class="footer footer-center mt-auto p-6 text-base-content/60 text-sm">
         <p>&copy; 원재고</p>
     </footer>

@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('재고')}"></head>
+<body class="app-shell">
+    <div th:replace="~{fragments/layout :: appTopbar('재고', false, false)}"></div>
+
+    <main class="app-content">
+        <style>
+            :root {
+                /* "조정" 배지 전용 — 입고(초록)/출고(코랄)와 구분되는 세 번째 방향(파랑)이라
+                   공유 팔레트엔 없는 별도 액센트. */
+                --color-adjust-text: #3A5FA0;
+                --color-adjust-bg: #DCE7FA;
+            }
+
+            html, body { background: var(--color-bg); }
+
+            .page { max-width: 480px; margin: 0 auto; padding: 20px 20px 40px; }
+
+            .movement-actions { display: flex; gap: 10px; margin-bottom: 28px; }
+            .movement-card {
+                flex: 1; display: flex; flex-direction: column; align-items: center; gap: 6px;
+                text-decoration: none; background: var(--color-card); border: 1px solid var(--color-card-border);
+                border-radius: 18px; padding: 18px 10px;
+            }
+            .movement-card-icon {
+                width: 40px; height: 40px; border-radius: 999px;
+                display: flex; align-items: center; justify-content: center;
+            }
+            .movement-card-icon.good { background: var(--color-ok-bg); color: var(--color-ok-text); }
+            .movement-card-icon.warn { background: var(--color-warn-bg); color: var(--color-warn-text); }
+            .movement-card-label { font-weight: 700; font-size: 0.95rem; color: var(--color-text); }
+
+            .section-title { font-size: 0.95rem; font-weight: 700; margin: 0 2px 10px; }
+
+            .history-rows {
+                background: var(--color-card); border: 1px solid var(--color-card-border); border-radius: 16px;
+                padding: 4px 14px;
+            }
+            .history-row {
+                display: flex; align-items: center; gap: 10px; padding: 12px 0;
+                text-decoration: none; color: inherit;
+            }
+            .history-row:not(:last-child) { border-bottom: 1px solid var(--color-card-border); }
+            .history-thumb {
+                width: 44px; height: 44px; border-radius: 12px; flex-shrink: 0;
+                background: var(--color-tile); object-fit: cover;
+                display: flex; align-items: center; justify-content: center; color: var(--color-text-muted);
+            }
+            .history-body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+            .history-name-row { display: flex; align-items: center; gap: 6px; min-width: 0; }
+            .history-type {
+                flex-shrink: 0; border-radius: 999px; padding: 2px 8px; font-size: 0.68rem; font-weight: 700;
+            }
+            .history-type.in { background: var(--color-ok-bg); color: var(--color-ok-text); }
+            .history-type.out { background: var(--color-warn-bg); color: var(--color-warn-text); }
+            .history-type.adjust { background: var(--color-adjust-bg); color: var(--color-adjust-text); }
+            .history-product {
+                flex: 1; min-width: 0; font-weight: 700; font-size: 0.85rem;
+                overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+            }
+            .history-date { font-size: 0.72rem; color: var(--color-text-muted); }
+            .history-quantity { flex-shrink: 0; font-weight: 800; font-size: 0.9rem; }
+            .history-quantity.positive { color: var(--color-ok-text); }
+            .history-quantity.negative { color: var(--color-warn-text); }
+            .history-chevron { flex-shrink: 0; color: var(--color-text-muted); }
+            .history-empty { text-align: center; color: var(--color-text-muted); font-size: 0.85rem; padding: 20px 0; }
+        </style>
+
+        <div class="page">
+            <div class="movement-actions">
+                <a class="movement-card" href="/movements/stock-in">
+                    <span class="movement-card-icon good">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <line x1="12" y1="5" x2="12" y2="19"></line>
+                            <polyline points="6 13 12 19 18 13"></polyline>
+                        </svg>
+                    </span>
+                    <span class="movement-card-label">입고하기</span>
+                </a>
+                <a class="movement-card" href="/movements/stock-out">
+                    <span class="movement-card-icon warn">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <line x1="12" y1="19" x2="12" y2="5"></line>
+                            <polyline points="6 11 12 5 18 11"></polyline>
+                        </svg>
+                    </span>
+                    <span class="movement-card-label">출고하기</span>
+                </a>
+            </div>
+
+            <div class="section-title">최근 재고 이력</div>
+            <div class="history-rows">
+                <a class="history-row" th:each="movement : ${recentMovements}"
+                   th:href="@{'/products/' + ${movement.variant.product.id}}">
+                    <img th:if="${movement.variant.product.resolveImageUrl() != null}"
+                         th:src="${movement.variant.product.resolveImageUrl()}" class="history-thumb" alt="">
+                    <div th:if="${movement.variant.product.resolveImageUrl() == null}" class="history-thumb">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <rect x="3" y="3" width="18" height="18" rx="3"></rect>
+                            <circle cx="9" cy="9" r="1.5" fill="currentColor" stroke="none"></circle>
+                            <polyline points="21 15 15 9 5 19"></polyline>
+                        </svg>
+                    </div>
+                    <div class="history-body">
+                        <div class="history-name-row">
+                            <span class="history-type"
+                                  th:classappend="${movement.type.name() == 'ADJUSTMENT_IN' or movement.type.name() == 'ADJUSTMENT_OUT'}
+                                                  ? 'adjust' : (${movement.quantityChange >= 0} ? 'in' : 'out')"
+                                  th:text="${movement.type.label}"></span>
+                            <span class="history-product"
+                                  th:text="${movement.variant.optionLabel.isEmpty()} ? ${movement.variant.product.name} : (${movement.variant.product.name} + ' / ' + ${movement.variant.optionLabel})"></span>
+                        </div>
+                        <span class="history-date" th:text="${#temporals.format(movement.createdAt, 'yyyy-MM-dd HH:mm')}"></span>
+                    </div>
+                    <span class="history-quantity" th:classappend="${movement.quantityChange >= 0} ? 'positive' : 'negative'"
+                          th:text="(${movement.quantityChange >= 0} ? '+' : '') + ${movement.quantityChange}"></span>
+                    <span class="history-chevron">›</span>
+                </a>
+                <p th:if="${recentMovements.isEmpty()}" class="history-empty">아직 재고 변경 기록이 없어요</p>
+            </div>
+        </div>
+    </main>
+    <div th:replace="~{fragments/layout :: appTabbar('stock')}"></div>
+</body>
+</html>

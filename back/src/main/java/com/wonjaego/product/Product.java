@@ -12,6 +12,7 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
+import java.math.BigDecimal;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -46,6 +47,10 @@ public class Product extends BaseEntity {
 
     private String externalProductId;
 
+    // Product-level cost basis, distinct from ProductVariant.price (the per-combo selling
+    // price, ADR 0008). Optional — used only to show margin/margin rate against the base price.
+    private BigDecimal costPrice;
+
     public Product(Member member, String name) {
         this.member = member;
         this.name = name;
@@ -68,5 +73,18 @@ public class Product extends BaseEntity {
 
     public void updateExternalImageUrl(String externalImageUrl) {
         this.externalImageUrl = externalImageUrl;
+    }
+
+    public void updateCostPrice(BigDecimal costPrice) {
+        this.costPrice = costPrice;
+    }
+
+    // Single source of truth for "what image URL represents this product" — a locally
+    // stored photo takes priority (served via FileStorage behind /products/{id}/photo,
+    // ADR 0003), falling back to a channel-hosted image URL for an imported product with
+    // no local photo. Every screen that shows a product thumbnail (list, 입고/출고 search
+    // and selection) resolves it this same way rather than re-deriving the rule.
+    public String resolveImageUrl() {
+        return photoKey != null ? "/products/" + getId() + "/photo" : externalImageUrl;
     }
 }

@@ -31,6 +31,11 @@ public interface ProductVariantRepository extends JpaRepository<ProductVariant, 
 
     boolean existsByMemberIdAndSkuAndIdNot(Long memberId, String sku, Long id);
 
+    // Auto-barcode sequence base/collision-check for ProductService.generateAutoBarcode().
+    long countByMemberIdAndBarcodeIsNotNull(Long memberId);
+
+    boolean existsByMemberIdAndBarcode(Long memberId, String barcode);
+
     // Barcode lookup for the 입고하기/출고하기 scan flow — SKU doubles as the barcode value.
     @Query("SELECT DISTINCT v FROM ProductVariant v "
             + "JOIN FETCH v.product "

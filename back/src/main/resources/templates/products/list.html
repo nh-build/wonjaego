@@ -13,21 +13,13 @@
     <link rel="stylesheet" as="style" crossorigin
           href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
 
+    <th:block th:replace="~{fragments/layout :: tokens}"></th:block>
+
     <style>
         :root {
-            --color-bg: #F7FBFE;
-            --color-card: #FFFFFF;
-            --color-card-border: #E8EEF4;
-            --color-tile: #E4F0FA;
-            --color-accent: #D2E7F5;
-            --color-button-bg: #C5E1F2;
-            --color-button-text: #2B3A45;
-            --color-text: #2B3A45;
-            --color-text-muted: #8A97A3;
-            --color-warn-text: #E29388;
-            --color-warn-bg: #F7E3E0;
-            --color-ok-text: #5AA06E;
-            --color-ok-bg: #E3F1E8;
+            /* 채널 배지("쿠팡" 등) 전용 강조색 — 공유 팔레트엔 없는, 이 배지 하나만 쓰는
+               별도 액센트라 여기 로컬로 남겨둔다. */
+            --color-channel-text: #4A90D9;
         }
 
         * { box-sizing: border-box; }
@@ -47,7 +39,6 @@
         .page {
             max-width: 480px;
             margin: 0 auto;
-            min-height: 100vh;
             padding: 20px 20px 40px;
         }
 
@@ -73,7 +64,7 @@
         .filter-chip {
             border: 1px solid var(--color-card-border); background: var(--color-card);
             border-radius: 999px; padding: 8px 14px; font-size: 0.85rem; font-weight: 600;
-            color: var(--color-text-muted); cursor: pointer;
+            color: var(--color-text-muted); cursor: pointer; white-space: nowrap;
         }
 
         .filter-chip.active { background: var(--color-button-bg); color: var(--color-button-text); border-color: var(--color-button-bg); }
@@ -89,7 +80,6 @@
         }
 
         .summary-count { font-weight: 700; }
-        .summary-imported { color: var(--color-ok-text); font-weight: 600; }
 
         .global-error {
             background: var(--color-warn-bg); color: var(--color-warn-text);
@@ -99,9 +89,9 @@
         #product-cards { display: flex; flex-direction: column; gap: 14px; }
 
         .product-card {
-            display: block; width: 100%; text-align: left; border: none; cursor: pointer;
+            display: flex; gap: 14px; width: 100%; text-align: left; cursor: pointer;
             background: var(--color-card); border: 1px solid var(--color-card-border);
-            border-radius: 18px; padding: 16px; display: flex; gap: 14px;
+            border-radius: 18px; padding: 16px;
         }
 
         .product-thumb {
@@ -115,29 +105,44 @@
         .product-info-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; }
 
         .product-name {
-            font-weight: 700; font-size: 0.98rem; overflow: hidden; text-overflow: ellipsis;
-            white-space: nowrap;
+            flex: 1; min-width: 0; font-weight: 700; font-size: 15px; overflow: hidden;
+            text-overflow: ellipsis; white-space: nowrap;
         }
 
+        .stock-badge-wrap { flex-shrink: 0; display: flex; flex-direction: column; align-items: flex-end; gap: 3px; }
+
         .stock-badge {
-            flex-shrink: 0; border-radius: 999px; padding: 4px 10px; font-size: 0.78rem; font-weight: 700;
+            border-radius: 999px; padding: 4px 10px; font-size: 0.78rem; font-weight: 700; white-space: nowrap;
         }
 
         .stock-badge.ok { color: var(--color-ok-text); background: var(--color-ok-bg); }
         .stock-badge.low, .stock-badge.out { color: var(--color-warn-text); background: var(--color-warn-bg); }
 
+        .stock-warning { font-size: 0.72rem; font-weight: 700; color: var(--color-warn-text); white-space: nowrap; }
+
         .product-option-summary { margin-top: 4px; font-size: 0.82rem; color: var(--color-text-muted); }
 
-        .product-price { margin-top: 6px; font-size: 1rem; font-weight: 700; }
+        .product-price { margin-top: 6px; font-size: 1.05rem; font-weight: 800; }
 
         .product-channel {
-            display: inline-block; margin-top: 8px; background: var(--color-tile); color: var(--color-button-text);
-            border-radius: 999px; padding: 3px 10px; font-size: 0.75rem; font-weight: 600;
+            display: inline-block; margin-top: 8px; background: var(--color-tile); color: var(--color-channel-text);
+            border-radius: 999px; padding: 3px 10px; font-size: 0.75rem; font-weight: 700;
         }
 
-        .empty-state {
-            text-align: center; color: var(--color-text-muted); font-size: 0.9rem; padding: 60px 0;
+        .empty-state { text-align: center; padding: 60px 20px; }
+
+        .empty-state-text { margin: 0 0 16px; color: var(--color-text-muted); font-size: 0.9rem; }
+
+        .empty-state-actions { display: flex; flex-direction: column; gap: 10px; max-width: 280px; margin: 0 auto; }
+
+        .empty-state-actions.hidden { display: none; }
+
+        .empty-state-button {
+            display: block; border-radius: 14px; padding: 13px; font-size: 0.9rem; font-weight: 700; text-align: center;
         }
+
+        .empty-state-button.primary { background: var(--color-button-bg); color: var(--color-button-text); }
+        .empty-state-button.secondary { background: var(--color-card); border: 1px solid var(--color-card-border); color: var(--color-text); }
 
         #scroll-sentinel {
             text-align: center; color: var(--color-text-muted); font-size: 0.82rem; padding: 18px 0;
@@ -145,9 +150,9 @@
 
     </style>
 </head>
-<body>
-    <div th:replace="~{fragments/layout :: appbar('상품 목록', false, null, null, true)}"></div>
-    <div class="page">
+<body class="app-shell">
+    <div th:replace="~{fragments/layout :: appTopbar('상품 목록', true, false)}"></div>
+    <div class="page app-content">
         <div th:if="${error}" class="global-error">
             <span th:text="${error}"></span>
         </div>
@@ -172,15 +177,14 @@
                    th:class="${stockFilter == 'out'} ? 'filter-chip active' : 'filter-chip'">품절</a>
             </div>
             <select id="sort-select">
-                <option value="latest" th:selected="${sort == null or sort == 'latest'}">최신순</option>
-                <option value="stock" th:selected="${sort == 'stock'}">재고순</option>
+                <option value="stock" th:selected="${sort == null or sort == 'stock'}">재고 적은순</option>
+                <option value="latest" th:selected="${sort == 'latest'}">최신순</option>
+                <option value="name" th:selected="${sort == 'name'}">이름순</option>
             </select>
         </div>
 
         <div class="summary-row">
             <span class="summary-count"><span th:text="'총 ' + ${page.totalCount()} + '개'"></span></span>
-            <span th:if="${page.importedCount() > 0}" class="summary-imported"
-                  th:text="'지그재그에서 ' + ${page.importedCount()} + '개 가져옴'"></span>
         </div>
 
         <div id="product-cards">
@@ -196,7 +200,10 @@
                 <div class="product-info">
                     <div class="product-info-top">
                         <span class="product-name" th:text="${item.name()}"></span>
-                        <span class="stock-badge" th:classappend="${item.stockStyle()}" th:text="${item.stockLabel()}"></span>
+                        <div class="stock-badge-wrap">
+                            <span class="stock-badge" th:classappend="${item.stockStyle()}" th:text="${item.stockLabel()}"></span>
+                            <span th:if="${item.warningLabel() != null}" class="stock-warning" th:text="${item.warningLabel()}"></span>
+                        </div>
                     </div>
                     <p th:if="${!item.optionSummary().isEmpty()}" class="product-option-summary" th:text="${item.optionSummary()}"></p>
                     <p class="product-price" th:text="${item.priceRange()}"></p>
@@ -205,14 +212,24 @@
             </a>
         </div>
 
-        <p id="empty-state" class="empty-state" th:classappend="${page.items().isEmpty()} ? '' : 'hidden'">등록된 상품이 없어요</p>
+        <div id="empty-state" class="empty-state"
+             th:with="trueEmpty=${(query == null or #strings.isEmpty(query)) and (stockFilter == null or #strings.isEmpty(stockFilter)) and page.totalCount() == 0}"
+             th:classappend="${page.items().isEmpty()} ? '' : 'hidden'">
+            <p id="empty-state-text" class="empty-state-text"
+               th:text="${trueEmpty} ? '아직 상품이 없어요' : '조건에 맞는 상품이 없어요'"></p>
+            <div id="empty-state-actions" class="empty-state-actions" th:classappend="${trueEmpty} ? '' : 'hidden'">
+                <a href="/products/new" class="empty-state-button primary">상품 등록하기</a>
+                <a href="/channels" class="empty-state-button secondary">채널에서 가져오기</a>
+            </div>
+        </div>
 
         <div id="scroll-sentinel" th:classappend="${page.hasNext()} ? '' : 'hidden'">스크롤하면 더 불러와요…</div>
     </div>
+    <div th:replace="~{fragments/layout :: appTabbar('products')}"></div>
 
     <script th:inline="javascript">
         var INITIAL_STOCK_FILTER = /*[[${stockFilter}]]*/ null;
-        var INITIAL_SORT = /*[[${sort}]]*/ 'latest';
+        var INITIAL_SORT = /*[[${sort}]]*/ 'stock';
         var INITIAL_HAS_NEXT = /*[[${page.hasNext()}]]*/ false;
     </script>
     <script th:inline="none">
@@ -221,6 +238,8 @@
             var cardsContainer = document.getElementById('product-cards');
             var sentinel = document.getElementById('scroll-sentinel');
             var emptyState = document.getElementById('empty-state');
+            var emptyStateText = document.getElementById('empty-state-text');
+            var emptyStateActions = document.getElementById('empty-state-actions');
             var sortSelect = document.getElementById('sort-select');
             if (!searchInput || !cardsContainer || !sentinel) {
                 return;
@@ -238,7 +257,7 @@
             function navigateWithCurrentState(overrides) {
                 var url = new URL(window.location.origin + '/products');
                 var stock = 'stock' in overrides ? overrides.stock : (INITIAL_STOCK_FILTER || '');
-                var sort = overrides.sort || INITIAL_SORT || 'latest';
+                var sort = overrides.sort || INITIAL_SORT || 'stock';
                 var query = searchInput.value.trim();
                 if (stock) {
                     url.searchParams.set('stock', stock);
@@ -296,11 +315,21 @@
                 var name = document.createElement('span');
                 name.className = 'product-name';
                 name.textContent = item.name;
+                top.appendChild(name);
+
+                var badgeWrap = document.createElement('div');
+                badgeWrap.className = 'stock-badge-wrap';
                 var badge = document.createElement('span');
                 badge.className = 'stock-badge ' + item.stockStyle;
                 badge.textContent = item.stockLabel;
-                top.appendChild(name);
-                top.appendChild(badge);
+                badgeWrap.appendChild(badge);
+                if (item.warningLabel) {
+                    var warning = document.createElement('span');
+                    warning.className = 'stock-warning';
+                    warning.textContent = item.warningLabel;
+                    badgeWrap.appendChild(warning);
+                }
+                top.appendChild(badgeWrap);
                 info.appendChild(top);
 
                 if (item.optionSummary) {
@@ -331,17 +360,18 @@
                 if (countEl) {
                     countEl.textContent = '총 ' + data.totalCount + '개';
                 }
-                var importedEl = document.querySelector('.summary-imported');
-                if (data.importedCount > 0) {
-                    if (!importedEl) {
-                        importedEl = document.createElement('span');
-                        importedEl.className = 'summary-imported';
-                        document.querySelector('.summary-row').appendChild(importedEl);
-                    }
-                    importedEl.textContent = '지그재그에서 ' + data.importedCount + '개 가져옴';
-                } else if (importedEl) {
-                    importedEl.remove();
+            }
+
+            // Mirrors the server-side trueEmpty condition (list.html's th:with) so a search
+            // that's cleared back to "no query, no filter, still zero products" shows the
+            // onboarding buttons again, and a search that merely finds nothing doesn't.
+            function updateEmptyState(data) {
+                if (!emptyStateText || !emptyStateActions) {
+                    return;
                 }
+                var trueEmpty = !searchInput.value.trim() && !INITIAL_STOCK_FILTER && data.totalCount === 0;
+                emptyStateText.textContent = trueEmpty ? '아직 상품이 없어요' : '조건에 맞는 상품이 없어요';
+                emptyStateActions.classList.toggle('hidden', !trueEmpty);
             }
 
             function fetchPage(pageNumber, reset) {
@@ -356,7 +386,7 @@
                 if (INITIAL_STOCK_FILTER) {
                     params.set('stock', INITIAL_STOCK_FILTER);
                 }
-                params.set('sort', INITIAL_SORT || 'latest');
+                params.set('sort', INITIAL_SORT || 'stock');
                 params.set('page', String(pageNumber));
 
                 fetch('/products/list-page?' + params.toString())
@@ -379,6 +409,7 @@
                         if (emptyState) {
                             emptyState.classList.toggle('hidden', cardsContainer.children.length > 0);
                         }
+                        updateEmptyState(data);
                     })
                     .finally(function () {
                         loading = false;
@@ -392,13 +423,15 @@
                 }, 300);
             });
 
+            // .page 가 곧 앱 셸의 스크롤 컨테이너(.app-content)라서, 뷰포트가 아니라
+            // 이 컨테이너를 기준(root)으로 교차를 감지해야 무한 스크롤이 동작한다.
             var observer = new IntersectionObserver(function (entries) {
                 entries.forEach(function (entry) {
                     if (entry.isIntersecting && hasNext && !loading) {
                         fetchPage(currentPage + 1, false);
                     }
                 });
-            });
+            }, { root: document.querySelector('.page') });
             observer.observe(sentinel);
         })();
     </script>

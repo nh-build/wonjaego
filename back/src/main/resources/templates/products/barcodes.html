@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('바코드 보기')}"></head>
+<body class="app-shell">
+    <div th:replace="~{fragments/layout :: appTopbar('바코드 보기', true, false)}"></div>
+
+    <main class="app-content">
+        <style>
+            html, body { background: var(--color-bg); }
+
+            .page { max-width: 480px; margin: 0 auto; padding: 20px 20px 40px; }
+
+            .barcode-list { display: flex; flex-direction: column; gap: 14px; margin-bottom: 20px; }
+
+            .barcode-item {
+                background: var(--color-card); border: 1px solid var(--color-card-border); border-radius: 16px;
+                padding: 18px; display: flex; flex-direction: column; align-items: center; gap: 6px;
+            }
+            .barcode-item-label { font-weight: 700; font-size: 0.9rem; color: var(--color-text); }
+            .barcode-item-empty { font-size: 0.82rem; color: var(--color-text-muted); padding: 20px 0; }
+
+            .print-button {
+                width: 100%; border: none; border-radius: 16px; padding: 16px;
+                background: var(--color-button-bg); color: var(--color-button-text); font-size: 1rem;
+                font-weight: 700; cursor: pointer; font-family: inherit;
+            }
+
+            @media print {
+                body.app-shell { height: auto; overflow: visible; }
+                .app-content { overflow: visible; height: auto; }
+                .app-topbar, .app-tabbar, .print-button { display: none !important; }
+                .barcode-item { break-inside: avoid; }
+            }
+        </style>
+
+        <div class="page">
+            <div class="barcode-list" id="barcode-list">
+                <div class="barcode-item" th:each="variant : ${variants}">
+                    <span class="barcode-item-label"
+                          th:text="${variant.optionLabel.isEmpty()} ? ${product.name} : ${variant.optionLabel}"></span>
+                    <svg th:if="${variant.barcode != null}" th:attr="jsbarcode-value=${variant.barcode}" jsbarcode-format="CODE128"></svg>
+                    <p th:if="${variant.barcode == null}" class="barcode-item-empty">미생성</p>
+                </div>
+            </div>
+            <button type="button" id="print-button" class="print-button">인쇄하기</button>
+        </div>
+    </main>
+    <div th:replace="~{fragments/layout :: appTabbar('products')}"></div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jsbarcode/3.12.3/JsBarcode.all.min.js" defer></script>
+    <script th:inline="none">
+        (function () {
+            var printButton = document.getElementById('print-button');
+            if (printButton) {
+                printButton.addEventListener('click', function () {
+                    window.print();
+                });
+            }
+
+            function renderBarcodes() {
+                if (window.JsBarcode) {
+                    window.JsBarcode('#barcode-list svg[jsbarcode-value]').init();
+                }
+            }
+
+            if (document.readyState === 'complete') {
+                renderBarcodes();
+            } else {
+                window.addEventListener('load', renderBarcodes);
+            }
+        })();
+    </script>
+</body>
+</html>

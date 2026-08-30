@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('설정')}"></head>
+<body class="app-shell">
+    <div th:replace="~{fragments/layout :: appTopbar('설정', true, false)}"></div>
+
+    <main class="app-content">
+        <style>
+            html, body { background: var(--color-bg); }
+
+            .page { max-width: 480px; margin: 0 auto; padding: 20px 20px 40px; }
+
+            .section-title { font-size: 0.95rem; font-weight: 700; margin: 0 2px 10px; }
+
+            .card {
+                background: var(--color-card); border: 1px solid var(--color-card-border);
+                border-radius: 20px; padding: 18px; margin-bottom: 24px;
+            }
+
+            .setting-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+            .setting-row-label { font-size: 0.95rem; font-weight: 700; }
+
+            .stepper { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+            .stepper-button {
+                width: 34px; height: 34px; border-radius: 999px; border: none;
+                background: var(--color-tile); color: var(--color-text); font-size: 1.15rem;
+                display: flex; align-items: center; justify-content: center; cursor: pointer;
+            }
+            .stepper-button:disabled { opacity: 0.4; cursor: default; }
+            .stepper-value {
+                width: 44px; text-align: center; font-weight: 700; font-size: 0.95rem;
+                font-family: inherit; color: var(--color-text);
+            }
+
+            .setting-hint { margin: 10px 2px 0; font-size: 0.8rem; color: var(--color-text-muted); }
+
+            .notify-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+            .notify-row-label { font-size: 0.95rem; font-weight: 700; color: var(--color-text-muted); }
+            .notify-badge {
+                flex-shrink: 0; font-size: 0.72rem; font-weight: 700; color: var(--color-text-muted);
+                background: var(--color-tile); border-radius: 999px; padding: 3px 9px;
+            }
+        </style>
+
+        <div class="page">
+            <p class="section-title">재고 설정</p>
+            <div class="card">
+                <div class="setting-row">
+                    <span class="setting-row-label">재고 임박 기준</span>
+                    <div class="stepper">
+                        <button type="button" id="threshold-minus" class="stepper-button" aria-label="기준 감소">−</button>
+                        <span id="threshold-value" class="stepper-value" th:text="${lowStockThreshold}"></span>
+                        <button type="button" id="threshold-plus" class="stepper-button" aria-label="기준 증가">+</button>
+                    </div>
+                </div>
+                <p class="setting-hint">
+                    옵션 재고가 <span id="threshold-hint-value" th:text="${lowStockThreshold}"></span>개 이하면 '재고 부족'으로 표시돼요
+                </p>
+            </div>
+
+            <p class="section-title">알림</p>
+            <div class="card">
+                <div class="notify-row">
+                    <span class="notify-row-label">주문·재고 알림</span>
+                    <span class="notify-badge">준비중</span>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script th:inline="none">
+        (function () {
+            var minusButton = document.getElementById('threshold-minus');
+            var plusButton = document.getElementById('threshold-plus');
+            var valueEl = document.getElementById('threshold-value');
+            var hintValueEl = document.getElementById('threshold-hint-value');
+            if (!minusButton || !plusButton || !valueEl) {
+                return;
+            }
+
+            var value = parseInt(valueEl.textContent, 10) || 0;
+
+            function render() {
+                valueEl.textContent = String(value);
+                hintValueEl.textContent = String(value);
+                minusButton.disabled = value <= 0;
+            }
+
+            function save(nextValue) {
+                var previous = value;
+                value = nextValue;
+                render();
+                minusButton.disabled = true;
+                plusButton.disabled = true;
+                var csrfMeta = document.querySelector('meta[name="_csrf"]');
+                var csrfHeaderMeta = document.querySelector('meta[name="_csrf_header"]');
+                var headers = {'Content-Type': 'application/json'};
+                if (csrfMeta && csrfHeaderMeta) {
+                    headers[csrfHeaderMeta.getAttribute('content')] = csrfMeta.getAttribute('content');
+                }
+                fetch('/settings/low-stock-threshold', {
+                    method: 'POST',
+                    headers: headers,
+                    body: JSON.stringify({value: nextValue})
+                }).then(function (response) {
+                    if (!response.ok) {
+                        throw new Error('저장에 실패했습니다.');
+                    }
+                }).catch(function () {
+                    value = previous;
+                    render();
+                }).finally(function () {
+                    plusButton.disabled = false;
+                    render();
+                });
+            }
+
+            minusButton.addEventListener('click', function () {
+                if (value <= 0) {
+                    return;
+                }
+                save(value - 1);
+            });
+            plusButton.addEventListener('click', function () {
+                save(value + 1);
+            });
+
+            render();
+        })();
+    </script>
+    <div th:replace="~{fragments/layout :: appTabbar('')}"></div>
+</body>
+</html>

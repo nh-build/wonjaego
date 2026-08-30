@@ -175,7 +175,8 @@ class ProductCrudTest {
 
         mockMvc.perform(post("/products/" + product.getId() + "/edit")
                         .session(session).with(csrf())
-                        .param("name", "바뀐이름"))
+                        .param("name", "바뀐이름")
+                        .param("price", "1000"))
                 .andExpect(status().is3xxRedirection());
 
         Product updated = productRepository.findById(product.getId()).orElseThrow();

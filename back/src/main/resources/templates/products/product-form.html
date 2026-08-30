@@ -1,0 +1,1162 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<body>
+    <!-- 등록(products/new.html)과 수정(products/edit.html)이 함께 쓰는 폼 — 두 화면의
+         차이는 모델 속성(isEdit/formAction/submitLabel/hasPhoto/productId/variantSeeds)뿐이고
+         입력 요소 자체는 완전히 동일하다. 옵션 조합의 재고 칸만 수정 모드에서 읽기 전용으로
+         바뀐다(재고 변경은 상세 화면의 Movement 조정에서만 — 아래 JS 참고). -->
+    <main class="app-content" th:fragment="body">
+        <style>
+            html, body {
+                background: var(--color-bg);
+            }
+
+            .page {
+                max-width: 480px;
+                margin: 0 auto;
+                padding: 20px 20px 40px;
+                background: var(--color-bg);
+            }
+
+            .global-error {
+                background: var(--color-warn-bg); color: var(--color-warn-text);
+                border-radius: 12px; padding: 12px 14px; margin-bottom: 16px; font-size: 0.85rem;
+            }
+
+            .form-card {
+                background: var(--color-card); border: 1px solid var(--color-card-border);
+                border-radius: 18px; padding: 20px; margin-bottom: 16px;
+            }
+
+            .field-label { display: block; font-size: 0.85rem; font-weight: 700; color: var(--color-text); margin-bottom: 6px; }
+
+            .field-input {
+                width: 100%; box-sizing: border-box; border: 1px solid var(--color-card-border); border-radius: 12px;
+                padding: 12px 14px; font-family: inherit; font-size: 0.95rem; color: var(--color-text); background: var(--color-card);
+            }
+            .field-input::placeholder { color: var(--color-text-muted); }
+
+            .field-row { display: flex; gap: 8px; align-items: stretch; }
+            .field-row .field-input { flex: 1; min-width: 0; }
+
+            .accent-button {
+                border: none; border-radius: 12px; padding: 0 16px; background: var(--color-button-bg);
+                color: var(--color-button-text); font-weight: 700; font-size: 0.9rem; cursor: pointer;
+                white-space: nowrap; font-family: inherit;
+            }
+
+            .field-error { display: block; margin-top: 6px; font-size: 0.82rem; color: var(--color-warn-text); }
+            .field-hint { margin-top: 8px; font-size: 0.78rem; color: var(--color-text-muted); }
+
+            .field-input-suffix { display: flex; align-items: center; gap: 6px; }
+            .field-input-bare {
+                border: none; outline: none; flex: 1; min-width: 0; font-family: inherit;
+                font-size: 0.95rem; color: var(--color-text); background: none; padding: 0;
+            }
+            .field-suffix { font-size: 0.85rem; color: var(--color-text-muted); }
+
+            .photo-picker {
+                display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px;
+                width: 96px; height: 96px; border-radius: 16px; border: 2px dashed var(--color-button-bg);
+                background: var(--color-tile); cursor: pointer; overflow: hidden;
+            }
+            .hidden-input { display: none; }
+            .photo-preview { width: 100%; height: 100%; object-fit: cover; }
+            .photo-preview.hidden { display: none; }
+            .photo-placeholder { display: flex; flex-direction: column; align-items: center; gap: 2px; color: var(--color-text-muted); }
+            .photo-placeholder.hidden { display: none; }
+            .photo-plus { font-size: 1.4rem; line-height: 1; }
+            .photo-caption { font-size: 0.72rem; }
+
+            .suggestion-panel {
+                display: flex; flex-direction: column; gap: 8px; border: 1px solid var(--color-card-border);
+                border-radius: 14px; padding: 14px; margin-top: 10px;
+            }
+            /* .hidden's specificity ties with this rule's — without this override, source
+               order (this <style> loads after Tailwind's injected sheet) would let display:flex win. */
+            .suggestion-panel.hidden { display: none; }
+            .suggestion-panel-title { font-weight: 700; font-size: 0.85rem; color: var(--color-text); }
+            .suggestion-sub-label { font-size: 0.8rem; font-weight: 600; color: var(--color-text); margin-bottom: 4px; display: block; }
+            .suggestion-input {
+                width: 100%; box-sizing: border-box; border: 1px solid var(--color-card-border); border-radius: 10px;
+                padding: 8px 10px; font-family: inherit; font-size: 0.85rem; background: var(--color-card); color: var(--color-text);
+            }
+            .suggestion-generate-button {
+                align-self: flex-start; border: 1px solid var(--color-button-bg); background: none; border-radius: 999px;
+                padding: 6px 14px; font-size: 0.82rem; font-weight: 700; color: var(--color-button-text);
+                cursor: pointer; font-family: inherit;
+            }
+            .suggestion-generate-button:disabled { opacity: 0.5; cursor: not-allowed; }
+            .suggestion-error { font-size: 0.8rem; color: var(--color-warn-text); }
+            .suggestion-results { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+            .suggestion-result-card {
+                background: var(--color-tile); border: 1px solid var(--color-card-border); border-radius: 10px;
+                padding: 10px; text-align: left; font-size: 0.85rem; font-weight: 600; color: var(--color-text);
+                cursor: pointer; font-family: inherit;
+            }
+            .suggestion-result-card:hover { border-color: var(--color-button-bg); }
+
+            .card-section-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+            .card-section-title { font-size: 0.95rem; font-weight: 700; color: var(--color-text); }
+            .card-section-title-sm { font-size: 0.85rem; font-weight: 700; color: var(--color-text); }
+            .field-hint-inline { font-size: 0.75rem; color: var(--color-text-muted); }
+
+            .option-rows { display: flex; flex-direction: column; gap: 8px; margin-top: 8px; }
+            .option-row { display: flex; gap: 8px; align-items: center; }
+            .option-name-input {
+                width: 88px; flex-shrink: 0; box-sizing: border-box; border: 1px solid var(--color-card-border);
+                border-radius: 10px; padding: 9px 10px; font-family: inherit; font-size: 0.85rem;
+                background: var(--color-card); color: var(--color-text);
+            }
+            .option-values-input {
+                flex: 1; min-width: 0; box-sizing: border-box; border: 1px solid var(--color-card-border);
+                border-radius: 10px; padding: 9px 10px; font-family: inherit; font-size: 0.85rem;
+                background: var(--color-card); color: var(--color-text);
+            }
+            .option-remove-button {
+                flex-shrink: 0; width: 34px; height: 34px; border: none; border-radius: 10px;
+                background: var(--color-tile); color: var(--color-text); cursor: pointer; font-size: 0.9rem;
+            }
+
+            .dashed-add-button {
+                width: 100%; margin-top: 10px; border: 2px dashed var(--color-card-border); border-radius: 12px;
+                background: none; padding: 10px; font-family: inherit; font-size: 0.85rem; font-weight: 600;
+                color: var(--color-text-muted); cursor: pointer;
+            }
+
+            .surcharge-fold { margin-top: 14px; border-radius: 14px; background: var(--color-bg); }
+            .surcharge-fold-toggle {
+                width: 100%; display: flex; align-items: center; justify-content: space-between; border: none;
+                background: none; padding: 10px 4px; cursor: pointer; font-family: inherit;
+            }
+            .surcharge-fold-toggle-left { display: flex; align-items: center; gap: 8px; }
+            .surcharge-fold-plus { color: var(--color-button-text); font-size: 1.1rem; line-height: 1; }
+            .surcharge-fold-text { display: flex; flex-direction: column; align-items: flex-start; text-align: left; }
+            .surcharge-fold-title { font-size: 0.85rem; font-weight: 700; color: var(--color-text); }
+            .surcharge-fold-detail { font-size: 0.75rem; color: var(--color-text-muted); }
+            .surcharge-fold-chevron { color: var(--color-text-muted); }
+            .surcharge-fold-body { display: flex; flex-direction: column; gap: 8px; padding: 4px 4px 8px; }
+            .surcharge-fold-body.hidden { display: none; }
+            .surcharge-group { display: flex; flex-direction: column; gap: 4px; }
+            .surcharge-group-label { font-size: 0.75rem; font-weight: 600; color: var(--color-text-muted); }
+            .surcharge-values { display: flex; flex-wrap: wrap; gap: 6px; }
+            .surcharge-value-chip {
+                display: flex; align-items: center; gap: 4px; border: 1px solid var(--color-card-border);
+                border-radius: 999px; padding: 4px 8px; background: var(--color-card);
+            }
+            .surcharge-value-text { font-size: 0.75rem; color: var(--color-text-muted); white-space: nowrap; }
+            .surcharge-value-input { width: 56px; border: none; outline: none; font-family: inherit; font-size: 0.78rem; color: var(--color-text); background: none; }
+
+            .variant-stock-rows { border: 1px solid var(--color-card-border); border-radius: 12px; overflow: hidden; background: var(--color-card); }
+            .variant-stock-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 10px 12px; }
+            .variant-stock-row:not(:last-child) { border-bottom: 1px solid var(--color-card-border); }
+            .variant-stock-left { display: flex; align-items: center; gap: 8px; }
+            .variant-stock-label { font-weight: 700; font-size: 0.85rem; color: var(--color-text); }
+            .variant-stock-badge { border-radius: 999px; padding: 2px 8px; font-size: 0.7rem; font-weight: 700; color: var(--color-warn-text); background: var(--color-warn-bg); }
+            .variant-stock-new-badge { border-radius: 999px; padding: 2px 8px; font-size: 0.7rem; font-weight: 700; color: var(--color-button-text); background: var(--color-tile); }
+            .variant-stock-right { display: flex; align-items: center; gap: 8px; }
+            .variant-stock-mini-label { font-size: 0.72rem; color: var(--color-text-muted); }
+            .variant-stock-price-input {
+                width: 76px; box-sizing: border-box; border: 1px solid var(--color-card-border); border-radius: 8px;
+                padding: 5px 8px; font-family: inherit; font-size: 0.8rem; background: var(--color-card); color: var(--color-text);
+            }
+            .variant-stock-qty-input {
+                width: 60px; box-sizing: border-box; border: 1px solid var(--color-card-border); border-radius: 8px;
+                padding: 5px 8px; font-family: inherit; font-size: 0.8rem; background: var(--color-card); color: var(--color-text);
+            }
+            .variant-stock-readonly {
+                width: 60px; text-align: right; font-family: inherit; font-size: 0.8rem; font-weight: 700; color: var(--color-text);
+            }
+
+            .total-stock-row {
+                display: flex; align-items: center; justify-content: space-between; margin-top: 12px;
+                padding: 12px 14px; border-radius: 12px; background: var(--color-tile);
+            }
+            .total-stock-label { font-size: 0.85rem; font-weight: 700; color: var(--color-text); }
+            .total-stock-value { font-weight: 800; color: var(--color-text); }
+
+            .submit-button {
+                width: 100%; margin-top: 4px; border: none; border-radius: 16px; padding: 16px;
+                background: var(--color-button-bg); color: var(--color-button-text); font-size: 1rem;
+                font-weight: 700; cursor: pointer; font-family: inherit;
+            }
+            .submit-button:disabled { opacity: 0.5; cursor: not-allowed; }
+
+            .margin-display { font-size: 0.82rem; font-weight: 600; color: var(--color-button-text); margin-top: 8px; }
+            .margin-display.hidden { display: none; }
+
+            .barcode-toggle-row {
+                display: flex; align-items: center; gap: 10px; margin-top: 4px;
+            }
+            .barcode-toggle-checkbox { width: 18px; height: 18px; flex-shrink: 0; accent-color: var(--color-button-bg); }
+            .barcode-toggle-label { font-size: 0.9rem; font-weight: 700; color: var(--color-text); }
+            .barcode-toggle-hint { margin-top: 6px; font-size: 0.78rem; color: var(--color-text-muted); }
+
+            .disappearing-warning {
+                background: var(--color-warn-bg); color: var(--color-warn-text);
+                border-radius: 12px; padding: 12px 14px; margin-bottom: 12px; font-size: 0.82rem; font-weight: 600;
+            }
+            .disappearing-warning.hidden { display: none; }
+        </style>
+
+        <div class="page">
+            <div th:if="${error}" class="global-error">
+                <span th:text="${error}"></span>
+            </div>
+
+            <form id="product-form" th:action="@{${formAction}}" th:object="${form}" method="post" enctype="multipart/form-data">
+                <div th:if="${#fields.hasGlobalErrors()}" class="global-error">
+                    <span th:each="err : ${#fields.globalErrors()}" th:text="${err}"></span>
+                </div>
+
+                <div class="form-card">
+                    <label class="field-label" for="photo">상품 사진 (선택)</label>
+                    <label for="photo" class="photo-picker">
+                        <input id="photo" type="file" th:field="*{photo}" accept="image/*" class="hidden-input">
+                        <img id="photo-preview-img" th:src="${hasPhoto} ? @{'/products/' + ${productId} + '/photo'} : null"
+                             th:class="${hasPhoto} ? 'photo-preview' : 'photo-preview hidden'" alt="">
+                        <span id="photo-tile-placeholder" th:class="${hasPhoto} ? 'photo-placeholder hidden' : 'photo-placeholder'">
+                            <span class="photo-plus">＋</span>
+                            <span class="photo-caption">사진 추가</span>
+                        </span>
+                    </label>
+                    <span class="field-error" th:if="${#fields.hasErrors('photo')}" th:errors="*{photo}"></span>
+                </div>
+
+                <div class="form-card">
+                    <label class="field-label" for="name">상품명</label>
+                    <div class="field-row">
+                        <input id="name" type="text" th:field="*{name}" placeholder="예: 린넨 여름 원피스" class="field-input">
+                        <button type="button" id="name-suggestion-toggle" class="accent-button">✨ AI 추천</button>
+                    </div>
+                    <span class="field-error" th:if="${#fields.hasErrors('name')}" th:errors="*{name}"></span>
+
+                    <div id="name-suggestion-panel" class="suggestion-panel hidden">
+                        <p class="suggestion-panel-title">AI 상품명 추천 (선택)</p>
+                        <div>
+                            <label class="suggestion-sub-label" for="name-suggestion-keywords">포인트 단어</label>
+                            <input type="text" id="name-suggestion-keywords" placeholder="예: 린넨, 여름, 원피스, 시원한" class="suggestion-input">
+                        </div>
+                        <div>
+                            <label class="suggestion-sub-label" for="name-suggestion-mood">컨셉/무드 (선택)</label>
+                            <input type="text" id="name-suggestion-mood" placeholder="예: 미니멀하게, 러블리하게" class="suggestion-input">
+                        </div>
+                        <button type="button" id="name-suggestion-button" class="suggestion-generate-button" disabled>
+                            이름 생성
+                        </button>
+                        <p id="name-suggestion-error" class="suggestion-error hidden"></p>
+                        <div id="name-suggestion-results" class="suggestion-results"></div>
+                    </div>
+
+                    <label class="field-label" for="price" style="margin-top: 16px;">기본가</label>
+                    <div class="field-input field-input-suffix">
+                        <input id="price" type="text" inputmode="decimal" name="price" placeholder="0" class="field-input-bare"
+                               th:value="${form.price != null} ? ${#numbers.formatInteger(form.price, 0, 'COMMA')} : ''">
+                        <span class="field-suffix">원</span>
+                    </div>
+                    <span class="field-error" th:if="${#fields.hasErrors('price')}" th:errors="*{price}"></span>
+                    <p class="field-hint">※ 옵션이 있으면 조합별 가격 = 기본가 + 옵션값 추가금</p>
+
+                    <div class="surcharge-fold">
+                        <button type="button" id="cost-fold-toggle" class="surcharge-fold-toggle">
+                            <span class="surcharge-fold-toggle-left">
+                                <span class="surcharge-fold-plus">＋</span>
+                                <span class="surcharge-fold-text">
+                                    <span class="surcharge-fold-title">원가 입력 (선택)</span>
+                                    <span class="surcharge-fold-detail">입력하면 마진·마진율을 계산해드려요</span>
+                                </span>
+                            </span>
+                            <span id="cost-fold-chevron" class="surcharge-fold-chevron">⌄</span>
+                        </button>
+                        <div id="cost-fold-body" class="surcharge-fold-body hidden">
+                            <label class="field-label" for="cost-price">원가</label>
+                            <div class="field-input field-input-suffix">
+                                <input id="cost-price" type="text" inputmode="decimal" name="costPrice" placeholder="0" class="field-input-bare"
+                                       th:value="${form.costPrice != null} ? ${#numbers.formatInteger(form.costPrice, 0, 'COMMA')} : ''">
+                                <span class="field-suffix">원</span>
+                            </div>
+                            <span class="field-error" th:if="${#fields.hasErrors('costPrice')}" th:errors="*{costPrice}"></span>
+                            <p id="margin-display" class="margin-display hidden"></p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-card">
+                    <div class="card-section-header">
+                        <span class="card-section-title">옵션 &amp; 재고 (선택)</span>
+                    </div>
+
+                    <div class="card-section-header" style="margin-bottom: 0;">
+                        <span class="field-label" style="margin-bottom: 0;">옵션</span>
+                        <span class="field-hint-inline">옵션명 자유 입력 · 수정 가능</span>
+                    </div>
+                    <div id="option-rows" class="option-rows"></div>
+                    <button type="button" id="option-add-button" class="dashed-add-button">+ 옵션 추가</button>
+                    <p class="field-hint">※ 옵션명을 '기장·핏·소재' 등 원하는 대로 바꿀 수 있어요</p>
+
+                    <div class="surcharge-fold">
+                        <button type="button" id="surcharge-fold-toggle" class="surcharge-fold-toggle">
+                            <span class="surcharge-fold-toggle-left">
+                                <span class="surcharge-fold-plus">＋</span>
+                                <span class="surcharge-fold-text">
+                                    <span class="surcharge-fold-title">옵션 추가금 설정</span>
+                                    <span class="surcharge-fold-detail">특정 옵션에 추가 요금 (예: 긴버전 +4,000)</span>
+                                </span>
+                            </span>
+                            <span id="surcharge-fold-chevron" class="surcharge-fold-chevron">⌄</span>
+                        </button>
+                        <div id="surcharge-fold-body" class="surcharge-fold-body hidden"></div>
+                    </div>
+
+                    <div class="card-section-header" style="margin-top: 16px;">
+                        <span class="card-section-title-sm">옵션별 재고</span>
+                        <span class="field-hint-inline" th:text="${isEdit} ? '기존 조합은 재고 유지 · 새 조합은 재고 0' : '조합 자동 생성'"></span>
+                    </div>
+
+                    <div id="variant-stock-section" class="hidden">
+                        <div id="variant-stock-rows" class="variant-stock-rows"></div>
+                    </div>
+
+                    <div id="single-stock-section">
+                        <label class="field-label" for="single-stock-input" th:text="${isEdit} ? '재고' : '총 재고'"></label>
+                        <input type="number" id="single-stock-input" min="0" value="0" class="field-input">
+                        <p th:if="${isEdit}" class="field-hint">※ 재고는 상품 상세 화면에서 조정할 수 있어요</p>
+                    </div>
+
+                    <div id="total-stock-summary" class="hidden">
+                        <div class="total-stock-row">
+                            <span class="total-stock-label">총 재고</span>
+                            <span id="total-stock-display" class="total-stock-value">0개</span>
+                        </div>
+                        <p class="field-hint" th:text="${isEdit} ? '※ 재고는 상품 상세 화면에서 조정할 수 있어요' : '※ 재고 0인 조합은 자동으로 품절 처리돼요'"></p>
+                    </div>
+
+                    <input th:if="${!isEdit}" type="hidden" id="stocks-json-input" th:field="*{stocksJson}">
+                    <input type="hidden" id="prices-json-input" th:field="*{pricesJson}">
+
+                    <div class="barcode-toggle-row">
+                        <input type="checkbox" id="auto-generate-barcode" class="barcode-toggle-checkbox" th:field="*{autoGenerateBarcode}">
+                        <label for="auto-generate-barcode" class="barcode-toggle-label">옵션별 바코드 자동 생성</label>
+                    </div>
+                    <p class="barcode-toggle-hint"
+                       th:text="${isEdit} ? '체크하면 새로 추가되는 옵션에도 고유 바코드가 생겨요. 기존 옵션의 바코드는 그대로예요.' : '저장하면 옵션 조합마다 고유 바코드가 생겨요. 상세에서 보기·인쇄'"></p>
+                </div>
+
+                <p id="disappearing-warning" class="disappearing-warning hidden"></p>
+
+                <button type="submit" id="submit-button" class="submit-button" th:text="${submitLabel}">저장하기</button>
+            </form>
+        </div>
+
+        <script th:inline="javascript">
+            var INITIAL_OPTION_GROUPS = /*[[${form.optionGroups}]]*/ [];
+            var INITIAL_PRICES_JSON = /*[[${form.pricesJson}]]*/ null;
+            var HAS_COST_PRICE_ERROR = /*[[${#fields.hasErrors('form.costPrice')}]]*/ false;
+            var INITIAL_COST_PRICE = /*[[${form.costPrice}]]*/ null;
+            var IS_EDIT_MODE = /*[[${isEdit}]]*/ false;
+            var INITIAL_VARIANT_SEEDS = /*[[${variantSeeds}]]*/ [];
+            var INITIAL_STOCKS_JSON = null;
+        </script>
+        <!-- ProductEditForm has no stocksJson property at all (stock never travels through
+             this form) — reading form.stocksJson unconditionally would throw a SpelEvaluation
+             exception in edit mode, so this whole script tag is structurally skipped there. -->
+        <script th:if="${!isEdit}" th:inline="javascript">
+            INITIAL_STOCKS_JSON = /*[[${form.stocksJson}]]*/ null;
+        </script>
+        <script th:inline="none">
+            (function () {
+                var optionRowsContainer = document.getElementById('option-rows');
+                var addOptionButton = document.getElementById('option-add-button');
+                var variantStockSection = document.getElementById('variant-stock-section');
+                var variantStockRows = document.getElementById('variant-stock-rows');
+                var singleStockSection = document.getElementById('single-stock-section');
+                var singleStockInput = document.getElementById('single-stock-input');
+                var totalStockSummary = document.getElementById('total-stock-summary');
+                var totalStockDisplay = document.getElementById('total-stock-display');
+                // Absent in edit mode (ProductEditForm has no stocksJson field at all — stock
+                // never travels through this form, see ADR 0001) — every use below is guarded.
+                var stocksJsonInput = document.getElementById('stocks-json-input');
+                var pricesJsonInput = document.getElementById('prices-json-input');
+                var basePriceInput = document.getElementById('price');
+                var surchargeFoldToggle = document.getElementById('surcharge-fold-toggle');
+                var surchargeFoldBody = document.getElementById('surcharge-fold-body');
+                var surchargeFoldChevron = document.getElementById('surcharge-fold-chevron');
+                var costFoldToggle = document.getElementById('cost-fold-toggle');
+                var costFoldBody = document.getElementById('cost-fold-body');
+                var costFoldChevron = document.getElementById('cost-fold-chevron');
+                var costPriceInput = document.getElementById('cost-price');
+                var marginDisplay = document.getElementById('margin-display');
+                var disappearingWarning = document.getElementById('disappearing-warning');
+                var submitButton = document.getElementById('submit-button');
+                // Stable id (not a form[action=...] selector) — the shared fragment renders
+                // under two different actions (/products vs /products/{id}/edit), and the
+                // appTopbar fragment's own hidden 로그아웃 form would otherwise be an easy
+                // false match for a bare document.querySelector('form').
+                var form = document.getElementById('product-form');
+                if (!optionRowsContainer || !addOptionButton || !variantStockSection || !variantStockRows
+                        || !singleStockSection || !singleStockInput || !totalStockSummary || !totalStockDisplay
+                        || !pricesJsonInput || !basePriceInput
+                        || !surchargeFoldToggle || !surchargeFoldBody || !surchargeFoldChevron
+                        || !costFoldToggle || !costFoldBody || !costFoldChevron || !costPriceInput || !marginDisplay
+                        || !disappearingWarning || !submitButton || !form) {
+                    return;
+                }
+
+                // Isolated purely to keep formatting/parsing consistent across every money field
+                // (기본가, 원가, 옵션 추가금, 조합별 가격) — display carries commas, everything read
+                // back out (state, submit) goes through parseMoney to strip them.
+                function formatMoneyInput(input) {
+                    var raw = input.value.replace(/,/g, '');
+                    if (raw === '' || raw === '-') {
+                        return;
+                    }
+                    var parts = raw.split('.');
+                    var intPart = parts[0].replace(/[^\d-]/g, '');
+                    var formattedInt = intPart.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+                    input.value = parts.length > 1 ? formattedInt + '.' + parts[1].replace(/\D/g, '') : formattedInt;
+                }
+
+                function parseMoney(value) {
+                    var n = parseFloat(String(value || '').replace(/,/g, ''));
+                    return isNaN(n) ? 0 : n;
+                }
+
+                function formatNumberWithCommas(n) {
+                    return Math.round(n).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+                }
+
+                surchargeFoldToggle.addEventListener('click', function () {
+                    var collapsed = surchargeFoldBody.classList.toggle('hidden');
+                    surchargeFoldChevron.textContent = collapsed ? '⌄' : '⌃';
+                });
+
+                costFoldToggle.addEventListener('click', function () {
+                    var collapsed = costFoldBody.classList.toggle('hidden');
+                    costFoldChevron.textContent = collapsed ? '⌄' : '⌃';
+                });
+
+                function updateMargin() {
+                    var costRaw = costPriceInput.value.trim();
+                    if (!costRaw) {
+                        marginDisplay.classList.add('hidden');
+                        return;
+                    }
+                    var price = parseMoney(basePriceInput.value);
+                    var cost = parseMoney(costRaw);
+                    var margin = price - cost;
+                    var rate = price > 0 ? (margin / price * 100) : 0;
+                    marginDisplay.textContent = '마진 ' + formatNumberWithCommas(margin) + '원 · 마진율 ' + rate.toFixed(1) + '%';
+                    marginDisplay.classList.remove('hidden');
+                }
+
+                costPriceInput.addEventListener('input', function () {
+                    formatMoneyInput(costPriceInput);
+                    updateMargin();
+                });
+
+                var rows = [];
+                // Keyed by the combination's values joined together, so previously entered
+                // stock/price numbers survive re-rendering the table when an unrelated row changes.
+                var stockByComboKey = {};
+                var priceByComboKey = {};
+                // A combo's price is auto-recalculated (base + matching surcharges) on every
+                // render UNLESS the seller has directly edited that combo's price input, OR it
+                // was seeded from an existing variant (edit mode) — this set tracks both, so
+                // later surcharge/base changes never silently reprice an already-stocked combo.
+                var priceOverriddenByComboKey = {};
+
+                function parseValuesText(text) {
+                    var seen = {};
+                    var values = [];
+                    (text || '').split(',').forEach(function (raw) {
+                        var value = raw.trim();
+                        if (value && !seen[value]) {
+                            seen[value] = true;
+                            values.push(value);
+                        }
+                    });
+                    return values;
+                }
+
+                function basePrice() {
+                    var base = parseMoney(basePriceInput.value);
+                    return base < 0 ? 0 : base;
+                }
+
+                // Rows with a blank name or no parsed values are treated as unused (matching
+                // the server's skip-blank-row rule) — they don't take part in the combination.
+                function activeGroups() {
+                    return rows.map(function (row) {
+                        return {
+                            name: row.nameInput.value.trim(),
+                            values: parseValuesText(row.valuesInput.value),
+                            surchargeByValue: row.surchargeByValue,
+                            existingGroupId: row.existingGroupId
+                        };
+                    }).filter(function (group) {
+                        return group.name.length > 0 && group.values.length > 0;
+                    });
+                }
+
+                // matchPairs carries {groupId, value} only for values coming from a
+                // pre-existing group (existingGroupId != null) — the edit-mode combo/seed
+                // matcher below uses it to mirror ProductService.update()'s "subset of an
+                // existing variant's option values" rule without ever seeing an OptionValue id.
+                function buildCombinations() {
+                    var groups = activeGroups();
+                    if (groups.length === 0) {
+                        return [];
+                    }
+                    var combos = [{values: [], surcharge: 0, matchPairs: []}];
+                    groups.forEach(function (group) {
+                        var next = [];
+                        combos.forEach(function (combo) {
+                            group.values.forEach(function (value) {
+                                var matchPairs = combo.matchPairs;
+                                if (group.existingGroupId != null) {
+                                    matchPairs = matchPairs.concat([{groupId: group.existingGroupId, value: value}]);
+                                }
+                                next.push({
+                                    values: combo.values.concat([value]),
+                                    surcharge: combo.surcharge + (group.surchargeByValue[value] || 0),
+                                    matchPairs: matchPairs
+                                });
+                            });
+                        });
+                        combos = next;
+                    });
+                    return combos.map(function (combo) {
+                        return {
+                            label: combo.values.join(' / '), key: JSON.stringify(combo.values),
+                            autoSurcharge: combo.surcharge, matchPairs: combo.matchPairs
+                        };
+                    });
+                }
+
+                function autoPrice(combo) {
+                    return basePrice() + combo.autoSurcharge;
+                }
+
+                function reindexRows() {
+                    rows.forEach(function (row, index) {
+                        row.nameInput.name = 'optionGroups[' + index + '].name';
+                        row.valuesInput.name = 'optionGroups[' + index + '].valuesText';
+                        row.idInput.name = 'optionGroups[' + index + '].id';
+                    });
+                }
+
+                function renderOptionRows() {
+                    while (optionRowsContainer.firstChild) {
+                        optionRowsContainer.removeChild(optionRowsContainer.firstChild);
+                    }
+                    rows.forEach(function (row) {
+                        optionRowsContainer.appendChild(row.container);
+                    });
+                }
+
+                // Rebuilds the collapsible "옵션 추가금 설정" section from every currently active
+                // option group (name + parsed values) — one mini price-add input per value,
+                // grouped under its option name so two groups sharing a value text (e.g. two
+                // "블랙"s) don't collide visually. Existing surcharges survive (kept on each
+                // group's own surchargeByValue map, keyed by value text); values removed from
+                // the comma list just drop out on the next render.
+                function renderSurchargeFold() {
+                    while (surchargeFoldBody.firstChild) {
+                        surchargeFoldBody.removeChild(surchargeFoldBody.firstChild);
+                    }
+                    activeGroups().forEach(function (group) {
+                        var groupWrap = document.createElement('div');
+                        groupWrap.className = 'surcharge-group';
+
+                        var groupLabel = document.createElement('span');
+                        groupLabel.className = 'surcharge-group-label';
+                        groupLabel.textContent = group.name;
+                        groupWrap.appendChild(groupLabel);
+
+                        var valuesWrap = document.createElement('div');
+                        valuesWrap.className = 'surcharge-values';
+                        group.values.forEach(function (value) {
+                            var wrapper = document.createElement('label');
+                            wrapper.className = 'surcharge-value-chip';
+
+                            var text = document.createElement('span');
+                            text.className = 'surcharge-value-text';
+                            text.textContent = value + ' +';
+
+                            var surchargeInput = document.createElement('input');
+                            surchargeInput.type = 'text';
+                            surchargeInput.inputMode = 'decimal';
+                            surchargeInput.className = 'surcharge-value-input';
+                            surchargeInput.value = String(group.surchargeByValue[value] || 0);
+                            formatMoneyInput(surchargeInput);
+                            surchargeInput.addEventListener('input', function () {
+                                formatMoneyInput(surchargeInput);
+                                group.surchargeByValue[value] = parseMoney(surchargeInput.value);
+                                renderCombinationsAndTotals();
+                            });
+
+                            wrapper.appendChild(text);
+                            wrapper.appendChild(surchargeInput);
+                            valuesWrap.appendChild(wrapper);
+                        });
+                        groupWrap.appendChild(valuesWrap);
+                        surchargeFoldBody.appendChild(groupWrap);
+                    });
+                }
+
+                function addRow(initialName, initialValues, focusNew, existingGroupId) {
+                    var container = document.createElement('div');
+
+                    var idInput = document.createElement('input');
+                    idInput.type = 'hidden';
+                    if (existingGroupId != null) {
+                        idInput.value = String(existingGroupId);
+                    }
+                    container.appendChild(idInput);
+
+                    var mainRow = document.createElement('div');
+                    mainRow.className = 'option-row';
+
+                    var nameInput = document.createElement('input');
+                    nameInput.type = 'text';
+                    nameInput.placeholder = '예: 색상';
+                    nameInput.value = initialName || '';
+                    nameInput.className = 'option-name-input';
+
+                    var valuesInput = document.createElement('input');
+                    valuesInput.type = 'text';
+                    valuesInput.placeholder = '예: 블랙, 화이트';
+                    valuesInput.value = initialValues || '';
+                    valuesInput.className = 'option-values-input';
+
+                    var removeButton = document.createElement('button');
+                    removeButton.type = 'button';
+                    removeButton.className = 'option-remove-button';
+                    removeButton.setAttribute('aria-label', '옵션 줄 삭제');
+                    removeButton.textContent = '✕';
+
+                    mainRow.appendChild(nameInput);
+                    mainRow.appendChild(valuesInput);
+                    mainRow.appendChild(removeButton);
+
+                    container.appendChild(mainRow);
+
+                    var row = {
+                        container: container, nameInput: nameInput, valuesInput: valuesInput,
+                        idInput: idInput, existingGroupId: existingGroupId != null ? existingGroupId : null,
+                        surchargeByValue: {}
+                    };
+
+                    nameInput.addEventListener('input', renderCombinationsAndTotals);
+                    valuesInput.addEventListener('input', renderCombinationsAndTotals);
+                    removeButton.addEventListener('click', function () {
+                        rows = rows.filter(function (r) {
+                            return r !== row;
+                        });
+                        reindexRows();
+                        renderOptionRows();
+                        renderCombinationsAndTotals();
+                    });
+
+                    rows.push(row);
+                    reindexRows();
+                    renderOptionRows();
+                    if (focusNew !== false) {
+                        nameInput.focus();
+                    }
+                }
+
+                // Edit-mode only: for each currently generated combo, find the first
+                // not-yet-claimed existing variant ("seed") whose entire option-value
+                // selection survives under this combo — i.e. every (existingGroupId, value)
+                // pair the seed had is still present in the combo's matchPairs. Mirrors
+                // ProductService.update()'s subset-extension matching exactly, just phrased
+                // in terms of value text instead of OptionValue ids (the client never sees
+                // those). Returns {comboIndexToSeed: {}, matchedSeedIndexes: {}}.
+                function matchSeedsToCombos(combos) {
+                    var comboIndexToSeed = {};
+                    var matchedSeedIndexes = {};
+                    var claimedCombo = {};
+                    INITIAL_VARIANT_SEEDS.forEach(function (seed, seedIndex) {
+                        var seedGroupIds = Object.keys(seed.valueTextByGroupId || {});
+                        for (var c = 0; c < combos.length; c++) {
+                            if (claimedCombo[c]) {
+                                continue;
+                            }
+                            var pairs = combos[c].matchPairs;
+                            var matches = seedGroupIds.every(function (gid) {
+                                for (var p = 0; p < pairs.length; p++) {
+                                    if (String(pairs[p].groupId) === gid) {
+                                        return pairs[p].value === seed.valueTextByGroupId[gid];
+                                    }
+                                }
+                                return false;
+                            });
+                            if (matches) {
+                                claimedCombo[c] = true;
+                                comboIndexToSeed[c] = seed;
+                                matchedSeedIndexes[seedIndex] = true;
+                                break;
+                            }
+                        }
+                    });
+                    return {comboIndexToSeed: comboIndexToSeed, matchedSeedIndexes: matchedSeedIndexes};
+                }
+
+                function updateDisappearingWarning(matchedSeedIndexes) {
+                    if (!IS_EDIT_MODE) {
+                        return;
+                    }
+                    var atRisk = [];
+                    INITIAL_VARIANT_SEEDS.forEach(function (seed, seedIndex) {
+                        if (!matchedSeedIndexes[seedIndex] && seed.stockQuantity > 0) {
+                            atRisk.push((seed.optionLabel || '기본') + ' (재고 ' + seed.stockQuantity + ')');
+                        }
+                    });
+                    if (atRisk.length === 0) {
+                        disappearingWarning.classList.add('hidden');
+                        submitButton.disabled = false;
+                    } else {
+                        disappearingWarning.textContent = '⚠ 재고가 있는 옵션은 삭제할 수 없어요: ' + atRisk.join(', ');
+                        disappearingWarning.classList.remove('hidden');
+                        submitButton.disabled = true;
+                    }
+                }
+
+                function buildComboRow(combo, matchedSeed) {
+                    var row = document.createElement('div');
+                    row.className = 'variant-stock-row';
+
+                    var left = document.createElement('div');
+                    left.className = 'variant-stock-left';
+                    var label = document.createElement('span');
+                    label.className = 'variant-stock-label';
+                    label.textContent = combo.label || (document.getElementById('name').value.trim() || '기본');
+                    left.appendChild(label);
+
+                    var badge = document.createElement('span');
+                    badge.className = 'variant-stock-badge hidden';
+                    badge.textContent = '품절';
+                    left.appendChild(badge);
+
+                    if (IS_EDIT_MODE && !matchedSeed) {
+                        var newBadge = document.createElement('span');
+                        newBadge.className = 'variant-stock-new-badge';
+                        newBadge.textContent = '신규';
+                        left.appendChild(newBadge);
+                    }
+
+                    var right = document.createElement('div');
+                    right.className = 'variant-stock-right';
+
+                    var priceLabel = document.createElement('span');
+                    priceLabel.className = 'variant-stock-mini-label';
+                    priceLabel.textContent = '가격';
+                    var priceInput = document.createElement('input');
+                    priceInput.type = 'text';
+                    priceInput.inputMode = 'decimal';
+                    priceInput.value = String(combo.key in priceByComboKey ? priceByComboKey[combo.key] : autoPrice(combo));
+                    priceInput.className = 'variant-stock-price-input';
+                    formatMoneyInput(priceInput);
+                    priceInput.addEventListener('input', function () {
+                        formatMoneyInput(priceInput);
+                        var amount = parseMoney(priceInput.value);
+                        if (amount < 0) {
+                            amount = 0;
+                        }
+                        priceByComboKey[combo.key] = amount;
+                        priceOverriddenByComboKey[combo.key] = true;
+                        updateTotalsAndHiddenFields();
+                    });
+
+                    right.appendChild(priceLabel);
+                    right.appendChild(priceInput);
+
+                    var stockLabel = document.createElement('span');
+                    stockLabel.className = 'variant-stock-mini-label';
+                    stockLabel.textContent = '재고';
+
+                    if (IS_EDIT_MODE) {
+                        var stockValue = matchedSeed ? matchedSeed.stockQuantity : 0;
+                        stockByComboKey[combo.key] = stockValue;
+                        var stockReadout = document.createElement('span');
+                        stockReadout.className = 'variant-stock-readonly';
+                        stockReadout.textContent = stockValue + '개';
+                        // 품절 배지는 "기존 조합인데 지금 재고가 0"일 때만 — 신규 조합은 이미
+                        // "신규" 배지가 그 의미를 담고 있어 둘 다 붙이면 중복이고, 라벨이 짧은
+                        // 옵션(예: 2글자)에서는 배지 두 개가 줄 폭을 넘겨 레이아웃이 깨진다.
+                        badge.classList.toggle('hidden', !(matchedSeed && stockValue === 0));
+                        right.appendChild(stockLabel);
+                        right.appendChild(stockReadout);
+                    } else {
+                        var stockInput = document.createElement('input');
+                        stockInput.type = 'number';
+                        stockInput.min = '0';
+                        stockInput.value = String(stockByComboKey[combo.key] || 0);
+                        stockInput.className = 'variant-stock-qty-input';
+                        stockInput.addEventListener('input', function () {
+                            var quantity = parseInt(stockInput.value, 10);
+                            if (isNaN(quantity) || quantity < 0) {
+                                quantity = 0;
+                            }
+                            stockByComboKey[combo.key] = quantity;
+                            badge.classList.toggle('hidden', quantity !== 0);
+                            updateTotalsAndHiddenFields();
+                        });
+                        badge.classList.toggle('hidden', (stockByComboKey[combo.key] || 0) !== 0);
+                        right.appendChild(stockLabel);
+                        right.appendChild(stockInput);
+                    }
+
+                    row.appendChild(left);
+                    row.appendChild(right);
+                    return row;
+                }
+
+                function updateTotalsAndHiddenFields() {
+                    var combos = buildCombinations();
+                    var total;
+                    var stocks;
+                    var prices;
+                    if (combos.length === 0) {
+                        var single = parseInt(singleStockInput.value, 10);
+                        if (isNaN(single) || single < 0) {
+                            single = 0;
+                        }
+                        total = single;
+                        stocks = [single];
+                        prices = [basePrice()];
+                    } else {
+                        stocks = combos.map(function (combo) {
+                            return stockByComboKey[combo.key] || 0;
+                        });
+                        total = stocks.reduce(function (sum, s) {
+                            return sum + s;
+                        }, 0);
+                        prices = combos.map(function (combo) {
+                            return combo.key in priceByComboKey ? priceByComboKey[combo.key] : autoPrice(combo);
+                        });
+                    }
+                    totalStockDisplay.textContent = total + '개';
+                    if (stocksJsonInput) {
+                        stocksJsonInput.value = JSON.stringify(stocks);
+                    }
+                    pricesJsonInput.value = JSON.stringify(prices);
+                }
+
+                function renderCombinationsAndTotals() {
+                    renderSurchargeFold();
+                    var combos = buildCombinations();
+                    // Combo keys are option-value combinations, which can recur after a row is
+                    // removed and re-added (or edited back to the same values) — drop any
+                    // stock/price/override state for keys that no longer exist so a stale
+                    // manually-overridden price can't silently reappear under a resurrected key.
+                    var currentKeys = {};
+                    combos.forEach(function (combo) { currentKeys[combo.key] = true; });
+                    [stockByComboKey, priceByComboKey, priceOverriddenByComboKey].forEach(function (map) {
+                        Object.keys(map).forEach(function (key) {
+                            if (!(key in currentKeys)) {
+                                delete map[key];
+                            }
+                        });
+                    });
+
+                    var matchResult = {comboIndexToSeed: {}, matchedSeedIndexes: {}};
+                    if (IS_EDIT_MODE) {
+                        matchResult = matchSeedsToCombos(combos);
+                        combos.forEach(function (combo, index) {
+                            var seed = matchResult.comboIndexToSeed[index];
+                            // Seed price only until the seller (or a prior render) has
+                            // touched this combo — never overwrite a live edit.
+                            if (seed && !(combo.key in priceByComboKey)) {
+                                priceByComboKey[combo.key] = parseFloat(seed.price);
+                                priceOverriddenByComboKey[combo.key] = true;
+                            }
+                        });
+                    }
+
+                    // Recompute the auto price for every combo the seller hasn't manually
+                    // overridden (or that wasn't seeded from an existing variant above), so
+                    // editing the base price or a surcharge updates them live.
+                    combos.forEach(function (combo) {
+                        if (!priceOverriddenByComboKey[combo.key]) {
+                            priceByComboKey[combo.key] = autoPrice(combo);
+                        }
+                    });
+                    while (variantStockRows.firstChild) {
+                        variantStockRows.removeChild(variantStockRows.firstChild);
+                    }
+                    if (combos.length === 0) {
+                        variantStockSection.classList.add('hidden');
+                        singleStockSection.classList.remove('hidden');
+                        // No combinations -> the single-stock input above already *is* "총 재고",
+                        // so this separate auto-summed readout would just duplicate it.
+                        totalStockSummary.classList.add('hidden');
+                        if (IS_EDIT_MODE) {
+                            var soloSeed = INITIAL_VARIANT_SEEDS.length === 1 ? INITIAL_VARIANT_SEEDS[0] : null;
+                            singleStockInput.value = soloSeed ? soloSeed.stockQuantity : 0;
+                            singleStockInput.readOnly = true;
+                            singleStockInput.disabled = true;
+                            matchResult.matchedSeedIndexes = soloSeed ? {0: true} : {};
+                        }
+                    } else {
+                        variantStockSection.classList.remove('hidden');
+                        singleStockSection.classList.add('hidden');
+                        totalStockSummary.classList.remove('hidden');
+                        combos.forEach(function (combo, index) {
+                            variantStockRows.appendChild(buildComboRow(combo, matchResult.comboIndexToSeed[index]));
+                        });
+                    }
+                    updateTotalsAndHiddenFields();
+                    updateDisappearingWarning(matchResult.matchedSeedIndexes);
+                }
+
+                addOptionButton.addEventListener('click', function () {
+                    addRow();
+                });
+                singleStockInput.addEventListener('input', updateTotalsAndHiddenFields);
+                basePriceInput.addEventListener('input', function () {
+                    formatMoneyInput(basePriceInput);
+                    renderCombinationsAndTotals();
+                    updateMargin();
+                });
+
+                // Rebuild whatever the user had entered before a validation error redisplayed
+                // this form (e.g. a stock-count mismatch) — otherwise the whole option/stock/
+                // price section would silently reset and the user would have to retype it all.
+                // In edit mode this is also how the existing option groups first appear.
+                (INITIAL_OPTION_GROUPS || []).forEach(function (group) {
+                    if (group && (group.name || group.valuesText)) {
+                        addRow(group.name, group.valuesText, false, group.id != null ? group.id : null);
+                    }
+                });
+                if (INITIAL_STOCKS_JSON) {
+                    try {
+                        var initialStocks = JSON.parse(INITIAL_STOCKS_JSON);
+                        var combos = buildCombinations();
+                        if (combos.length > 0 && initialStocks.length === combos.length) {
+                            combos.forEach(function (combo, index) {
+                                stockByComboKey[combo.key] = initialStocks[index] || 0;
+                            });
+                        } else if (combos.length === 0 && initialStocks.length === 1) {
+                            singleStockInput.value = initialStocks[0];
+                        }
+                    } catch (e) {
+                        // Malformed stocksJson never reaches here in practice — the server
+                        // already rejects it before this page re-renders.
+                    }
+                }
+                if (INITIAL_PRICES_JSON) {
+                    try {
+                        var initialPrices = JSON.parse(INITIAL_PRICES_JSON);
+                        var priceCombos = buildCombinations();
+                        if (priceCombos.length > 0 && initialPrices.length === priceCombos.length) {
+                            // Restored prices are treated as explicit overrides — we can't tell
+                            // which were auto-calculated vs. hand-edited before the rejected
+                            // submit, so re-deriving them from the (possibly since-changed)
+                            // base price/surcharges would silently replace what was submitted.
+                            priceCombos.forEach(function (combo, index) {
+                                priceByComboKey[combo.key] = initialPrices[index];
+                                priceOverriddenByComboKey[combo.key] = true;
+                            });
+                        }
+                    } catch (e) {
+                        // Malformed pricesJson never reaches here in practice — the server
+                        // already rejects it before this page re-renders.
+                    }
+                }
+                formatMoneyInput(basePriceInput);
+                if (INITIAL_COST_PRICE != null || HAS_COST_PRICE_ERROR) {
+                    costFoldBody.classList.remove('hidden');
+                    costFoldChevron.textContent = '⌃';
+                }
+                formatMoneyInput(costPriceInput);
+                updateMargin();
+
+                renderCombinationsAndTotals();
+
+                // price/costPrice submit as plain form fields (unlike stocksJson/pricesJson,
+                // which are already-numeric hidden fields) — their displayed value
+                // carries commas for readability, so strip them right before the browser
+                // serializes the form, never in the fields themselves (that would fight the
+                // formatter on every keystroke).
+                form.addEventListener('submit', function (event) {
+                    if (submitButton.disabled) {
+                        event.preventDefault();
+                        return;
+                    }
+                    basePriceInput.value = String(parseMoney(basePriceInput.value));
+                    if (costPriceInput.value.trim()) {
+                        costPriceInput.value = String(parseMoney(costPriceInput.value));
+                    }
+                });
+            })();
+        </script>
+        <script th:inline="none">
+            (function () {
+                var photoInput = document.getElementById('photo');
+                var previewImg = document.getElementById('photo-preview-img');
+                var placeholder = document.getElementById('photo-tile-placeholder');
+                if (!photoInput || !previewImg || !placeholder) {
+                    return;
+                }
+
+                photoInput.addEventListener('change', function () {
+                    var file = photoInput.files && photoInput.files[0];
+                    if (!file) {
+                        previewImg.classList.add('hidden');
+                        placeholder.classList.remove('hidden');
+                        return;
+                    }
+                    var reader = new FileReader();
+                    reader.onload = function () {
+                        previewImg.src = reader.result;
+                        previewImg.classList.remove('hidden');
+                        placeholder.classList.add('hidden');
+                    };
+                    reader.readAsDataURL(file);
+                });
+            })();
+        </script>
+        <script th:inline="none">
+            (function () {
+                var toggleButton = document.getElementById('name-suggestion-toggle');
+                var panel = document.getElementById('name-suggestion-panel');
+                var keywordsInput = document.getElementById('name-suggestion-keywords');
+                if (!toggleButton || !panel || !keywordsInput) {
+                    return;
+                }
+
+                toggleButton.addEventListener('click', function () {
+                    panel.classList.toggle('hidden');
+                    if (!panel.classList.contains('hidden')) {
+                        keywordsInput.focus();
+                    }
+                });
+            })();
+        </script>
+        <script th:inline="none">
+            // Free, non-LLM name-suggestion generator: combines [훅 문구] + 스타일 수식어 1~2개 +
+            // 키워드. Kept as this one function so a future LLM-backed version can replace just
+            // the body and keep the same call signature (keyword, mood) -> array of 5 strings.
+            // (mood is accepted for that future swap but unused here — the pool formula has no
+            // slot for it.)
+            var HOOK_PHRASE_POOL = ['주문폭주', '오늘만 할인', '재입고', '후기극찬', '모델 강추', '단독특가', '품절임박', '당일발송', '무료배송', '1+1'];
+            var STYLE_MODIFIER_POOL = ['데일리', '오버핏', '슬림핏', '부클레', '포근한', '여리핏', '감성', '베이직', '겨울신상', '하이엔드'];
+
+            function shuffledCopy(pool) {
+                var copy = pool.slice();
+                for (var i = copy.length - 1; i > 0; i--) {
+                    var j = Math.floor(Math.random() * (i + 1));
+                    var tmp = copy[i];
+                    copy[i] = copy[j];
+                    copy[j] = tmp;
+                }
+                return copy;
+            }
+
+            // 콤마로 구분된 여러 포인트 단어를 하나의 공백 구분 키워드 구문으로 정리한다.
+            // 예: "니트, 가디건" -> "니트 가디건".
+            function toKeywordPhrase(rawKeywords) {
+                return (rawKeywords || '')
+                    .split(',')
+                    .map(function (part) { return part.trim().replace(/\s+/g, ' '); })
+                    .filter(function (part) { return part.length > 0; })
+                    .join(' ');
+            }
+
+            function generateNameSuggestions(keyword, mood) {
+                var keywordPhrase = toKeywordPhrase(keyword);
+                if (!keywordPhrase) {
+                    return [];
+                }
+
+                var hooks = shuffledCopy(HOOK_PHRASE_POOL);
+                var modifiers = shuffledCopy(STYLE_MODIFIER_POOL);
+
+                var suggestions = [];
+                var modifierCursor = 0;
+                for (var i = 0; i < 5; i++) {
+                    // 1~2개씩 뽑아도 5개 후보 전체에서 최대 10개까지만 필요하므로, 수식어 풀(10개)을
+                    // 앞에서부터 순서대로 나눠 쓰기만 하면 후보 사이에 겹치는 수식어가 생기지 않는다.
+                    var modifierCount = Math.random() < 0.5 ? 1 : 2;
+                    var pickedModifiers = modifiers.slice(modifierCursor, modifierCursor + modifierCount);
+                    modifierCursor += modifierCount;
+                    suggestions.push('[' + hooks[i] + '] ' + pickedModifiers.join(' ') + ' ' + keywordPhrase);
+                }
+                return suggestions;
+            }
+
+            (function () {
+                var keywordsInput = document.getElementById('name-suggestion-keywords');
+                var moodInput = document.getElementById('name-suggestion-mood');
+                var suggestButton = document.getElementById('name-suggestion-button');
+                var resultsBox = document.getElementById('name-suggestion-results');
+                var errorBox = document.getElementById('name-suggestion-error');
+                var nameInput = document.getElementById('name');
+                if (!keywordsInput || !moodInput || !suggestButton || !resultsBox || !errorBox || !nameInput) {
+                    return;
+                }
+
+                var DEFAULT_LABEL = '이름 생성';
+                var REGENERATE_LABEL = '재생성';
+
+                function updateButtonEnabled() {
+                    suggestButton.disabled = keywordsInput.value.trim().length === 0;
+                }
+
+                function clearResults() {
+                    while (resultsBox.firstChild) {
+                        resultsBox.removeChild(resultsBox.firstChild);
+                    }
+                }
+
+                function showError(message) {
+                    errorBox.textContent = message;
+                    errorBox.classList.remove('hidden');
+                }
+
+                function hideError() {
+                    errorBox.classList.add('hidden');
+                }
+
+                function buildResultCard(name) {
+                    var card = document.createElement('button');
+                    card.type = 'button';
+                    card.className = 'suggestion-result-card';
+                    card.textContent = name;
+                    card.addEventListener('click', function () {
+                        nameInput.value = name;
+                    });
+                    return card;
+                }
+
+                keywordsInput.addEventListener('input', updateButtonEnabled);
+
+                suggestButton.addEventListener('click', function () {
+                    var keywords = keywordsInput.value.trim();
+                    if (!keywords) {
+                        return;
+                    }
+
+                    hideError();
+                    clearResults();
+
+                    var names = generateNameSuggestions(keywords, moodInput.value);
+                    if (names.length === 0) {
+                        showError('상품명을 만드는 데 실패했습니다. 다시 시도해주세요.');
+                    } else {
+                        names.forEach(function (name) {
+                            resultsBox.appendChild(buildResultCard(name));
+                        });
+                    }
+                    suggestButton.textContent = REGENERATE_LABEL;
+                    updateButtonEnabled();
+                });
+
+                updateButtonEnabled();
+            })();
+        </script>
+    </main>
+</body>
+</html>

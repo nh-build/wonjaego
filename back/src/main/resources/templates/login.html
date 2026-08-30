@@ -1,10 +1,8 @@
 <!DOCTYPE html>
 <html xmlns:th="http://www.thymeleaf.org" data-theme="wonjaego">
 <head th:replace="~{fragments/layout :: head('로그인')}"></head>
-<body class="min-h-screen flex flex-col">
-    <div th:replace="~{fragments/layout :: appbar('로그인', true, null, null, true)}"></div>
-
-    <main class="flex-1 flex items-center justify-center min-h-[100dvh] p-6 box-border">
+<body>
+    <main class="flex items-center justify-center min-h-[100dvh] p-6 box-border">
         <div class="card w-full max-w-[360px] bg-base-200 shadow-sm rounded-3xl">
             <div class="card-body items-center gap-4">
                 <img src="/logo_ver1.png" alt="원재고" class="w-40 h-auto">
@@ -40,7 +38,7 @@
     <style>
         .login-tagline {
             font-family: Georgia, 'Times New Roman', serif;
-            color: #8A97A3;
+            color: var(--sub);
             letter-spacing: 0.05em;
             font-size: 0.95rem;
             margin: 0;

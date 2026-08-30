@@ -27,6 +27,15 @@ public class StockMovementController {
     private final MovementService movementService;
     private final ProductService productService;
 
+    // 재고 탭 — 입고/출고 진입점 + 최근 재고 이력. Distinct from /movements/new (single-variant
+    // form MovementController still owns) and from /movements/stock-in|out (this class's own
+    // batch entry forms) — this is the tab's landing page, not a form submission target.
+    @GetMapping("/movements")
+    public String stockTab(@AuthenticationPrincipal MemberPrincipal principal, Model model) {
+        model.addAttribute("recentMovements", movementService.listRecent(principal.getMemberId()));
+        return "movements/index";
+    }
+
     @GetMapping("/movements/stock-in")
     public String stockInForm(@AuthenticationPrincipal MemberPrincipal principal,
                                @RequestParam(required = false) Long productId,

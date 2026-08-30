@@ -2,6 +2,7 @@ package com.wonjaego.product;
 
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -13,6 +14,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.context.SpringBootTest.WebEnvironment;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.mock.web.MockHttpSession;
+import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
@@ -48,6 +50,20 @@ class StockEntryLookupTest {
         mockMvc.perform(post("/products/" + productId + "/variants/" + variantId + "/edit")
                 .session(session).with(csrf())
                 .param("sku", sku));
+    }
+
+    private Long createProductWithPhoto(MockHttpSession session, String name) throws Exception {
+        mockMvc.perform(multipart("/products")
+                        .file(new MockMultipartFile("photo", "product.jpg", "image/jpeg", "fake-jpeg-bytes".getBytes()))
+                        .session(session).with(csrf())
+                        .param("name", name)
+                        .param("price", "1000"))
+                .andExpect(status().is3xxRedirection());
+        return productRepository.findAll().stream()
+                .filter(p -> p.getName().equals(name))
+                .findFirst()
+                .orElseThrow()
+                .getId();
     }
 
     @Test
@@ -106,9 +122,30 @@ class StockEntryLookupTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.productId").value(productId))
                 .andExpect(jsonPath("$.productName").value("상품B"))
+                .andExpect(jsonPath("$.imageUrl").doesNotExist())
                 .andExpect(jsonPath("$.matchedSku").doesNotExist())
                 .andExpect(jsonPath("$.variants[0].id").value(variantId))
                 .andExpect(jsonPath("$.variants[0].stockQuantity").value(0));
+    }
+
+    @Test
+    void 검색_결과에_상품_이미지_URL이_포함된다() throws Exception {
+        MockHttpSession session = AuthTestSupport.signUpAndLogin(mockMvc, "seller14", "password123", "가게14");
+        Long productId = createProductWithPhoto(session, "사진있는검색상품");
+
+        mockMvc.perform(get("/products/search").param("q", "사진있는검색상품").session(session))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].imageUrl").value("/products/" + productId + "/photo"));
+    }
+
+    @Test
+    void 사진이_있는_상품은_stock_entry_응답에_이미지_URL이_포함된다() throws Exception {
+        MockHttpSession session = AuthTestSupport.signUpAndLogin(mockMvc, "seller15", "password123", "가게15");
+        Long productId = createProductWithPhoto(session, "사진있는상품");
+
+        mockMvc.perform(get("/products/" + productId + "/stock-entry").session(session))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.imageUrl").value("/products/" + productId + "/photo"));
     }
 
     @Test
