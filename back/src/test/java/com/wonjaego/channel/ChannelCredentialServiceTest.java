@@ -26,7 +26,7 @@ class ChannelCredentialServiceTest {
     private MemberService memberService;
 
     private Long createMember(String username) {
-        Member member = memberService.signUp(username, "password123", "가게-" + username);
+        Member member = memberService.signUp(username, "password123", "가게-" + username, null);
         return member.getId();
     }
 

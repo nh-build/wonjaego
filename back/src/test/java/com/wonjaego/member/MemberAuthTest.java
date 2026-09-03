@@ -98,14 +98,16 @@ class MemberAuthTest {
     }
 
     @Test
-    void 로그인한_회원은_내_정보에서_본인의_username과_상호명을_확인할_수_있다() throws Exception {
+    void 로그인한_회원은_내_정보에서_본인의_상호명을_확인할_수_있다() throws Exception {
         signUp("seller4", "password123", "네번째가게");
         MockHttpSession session = login("seller4", "password123");
 
+        // 회원가입에 이메일을 넣지 않았으니 "이메일 미등록"으로 표시된다(username은 더 이상
+        // 이 화면에 노출하지 않는다 — 프로필 카드는 이름+이메일만 보여준다).
         mockMvc.perform(get("/me").session(session))
                 .andExpect(status().isOk())
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("seller4")))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("네번째가게")));
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("네번째가게")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("이메일 미등록")));
     }
 
     @Test

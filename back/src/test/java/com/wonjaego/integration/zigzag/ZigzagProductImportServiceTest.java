@@ -96,7 +96,7 @@ class ZigzagProductImportServiceTest {
     }
 
     private Long createMemberWithZigzagKeys(String username) {
-        Member member = memberService.signUp(username, "password123", "가게-" + username);
+        Member member = memberService.signUp(username, "password123", "가게-" + username, null);
         channelCredentialService.connect(member.getId(), ChannelType.ZIGZAG, "access", "secret");
         return member.getId();
     }
@@ -167,7 +167,7 @@ class ZigzagProductImportServiceTest {
 
     @Test
     void 지그재그_키를_연동하지_않은_회원은_가져오기가_거부된다() {
-        Member member = memberService.signUp("zimport3", "password123", "가게-zimport3");
+        Member member = memberService.signUp("zimport3", "password123", "가게-zimport3", null);
 
         assertThrows(com.wonjaego.channel.ChannelCredentialNotFoundException.class,
                 () -> zigzagProductImportService.importProducts(member.getId()));

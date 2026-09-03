@@ -47,7 +47,7 @@ public class BaseInitData implements ApplicationRunner {
             return;
         }
 
-        Member member = memberService.signUp("seller", "password123", "원재고 샘플가게");
+        Member member = memberService.signUp("seller", "password123", "원재고 샘플가게", "seller@wonjaego.example");
         Long memberId = member.getId();
 
         SalesChannel smartstore = salesChannelService.create(memberId, channelForm("스마트스토어"));

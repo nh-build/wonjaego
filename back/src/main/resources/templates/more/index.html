@@ -8,12 +8,16 @@
         <style>
             html, body { background: var(--color-bg); }
 
+            /* 더보기 화면엔 톱니(설정 진입점)를 두지 않는다 — 설정은 다른 화면 상단바에서만
+               들어간다. appTopbar 프래그먼트 자체는 공용이라 여기서만 감춘다. */
+            .app-topbar-right { display: none; }
+
             .page { max-width: 480px; margin: 0 auto; padding: 20px 20px 40px; }
 
             .profile-card {
                 display: flex; align-items: center; gap: 14px; padding: 20px;
                 background: var(--color-card); border: 1px solid var(--color-card-border);
-                border-radius: 20px; margin-bottom: 20px;
+                border-radius: 20px; margin-bottom: 20px; text-decoration: none; color: inherit;
             }
 
             .avatar {
@@ -24,11 +28,11 @@
 
             .profile-info { flex: 1; min-width: 0; }
             .profile-name { font-weight: 700; font-size: 1.05rem; }
-            .profile-username { color: var(--color-text-muted); font-size: 0.85rem; margin-top: 4px; }
+            .profile-email { color: var(--color-text-muted); font-size: 0.85rem; margin-top: 4px; }
 
             .menu-list {
                 background: var(--color-card); border: 1px solid var(--color-card-border);
-                border-radius: 20px; overflow: hidden;
+                border-radius: 20px; overflow: hidden; margin-bottom: 20px;
             }
 
             .menu-row {
@@ -48,17 +52,17 @@
                 background: var(--color-tile); border-radius: 999px; padding: 3px 9px;
             }
 
-            .menu-row.logout { color: var(--color-warn-text); font-weight: 700; }
+            .logout-row { color: var(--color-warn-text); font-weight: 700; margin-bottom: 0; }
         </style>
 
         <div class="page">
-            <div class="profile-card">
+            <a href="/me" class="profile-card">
                 <div class="avatar" th:text="${#strings.substring(member.businessName, 0, 1)}"></div>
                 <div class="profile-info">
                     <div class="profile-name" th:text="${member.businessName}"></div>
-                    <div class="profile-username" th:text="${member.username}"></div>
+                    <div class="profile-email" th:text="${member.email != null and !member.email.isEmpty()} ? ${member.email} : '이메일 미등록'"></div>
                 </div>
-            </div>
+            </a>
 
             <div class="menu-list">
                 <a href="/me" class="menu-row">
@@ -73,12 +77,26 @@
                         <polyline points="9 6 15 12 9 18"></polyline>
                     </svg>
                 </a>
+            </div>
+
+            <div class="menu-list">
                 <button type="button" class="menu-row disabled" disabled>
-                    <span class="menu-label">도움말</span>
+                    <span class="menu-label">알림 설정</span>
                     <span class="menu-badge">준비중</span>
                 </button>
+                <button type="button" class="menu-row disabled" disabled>
+                    <span class="menu-label">공지사항</span>
+                    <span class="menu-badge">준비중</span>
+                </button>
+                <button type="button" class="menu-row disabled" disabled>
+                    <span class="menu-label">이용약관 · 개인정보</span>
+                    <span class="menu-badge">준비중</span>
+                </button>
+            </div>
+
+            <div class="menu-list">
                 <form th:action="@{/logout}" method="post">
-                    <button type="submit" class="menu-row logout">
+                    <button type="submit" class="menu-row logout-row">
                         <span class="menu-label">로그아웃</span>
                     </button>
                 </form>

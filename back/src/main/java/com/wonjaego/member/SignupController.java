@@ -27,7 +27,7 @@ public class SignupController {
             return "signup";
         }
         try {
-            memberService.signUp(form.getUsername(), form.getPassword(), form.getBusinessName());
+            memberService.signUp(form.getUsername(), form.getPassword(), form.getBusinessName(), form.getEmail());
         } catch (DuplicateUsernameException e) {
             bindingResult.rejectValue("username", "duplicate", e.getMessage());
             return "signup";

@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('프로필 수정')}"></head>
+<body class="app-shell">
+    <div th:replace="~{fragments/layout :: appTopbar('프로필 수정', true, false)}"></div>
+
+    <main class="app-content">
+        <style>
+            html, body { background: var(--color-bg); }
+
+            .page { max-width: 480px; margin: 0 auto; padding: 24px 20px 40px; }
+
+            .avatar-wrap { display: flex; justify-content: center; margin-bottom: 28px; }
+            .avatar {
+                width: 84px; height: 84px; border-radius: 999px; background: var(--color-accent);
+                display: flex; align-items: center; justify-content: center;
+                font-size: 2rem; font-weight: 700; color: var(--color-text);
+            }
+
+            .field-label { display: block; font-size: 0.85rem; font-weight: 700; color: var(--color-text); margin: 20px 0 6px; }
+            .field-label:first-of-type { margin-top: 0; }
+
+            .field-input {
+                width: 100%; box-sizing: border-box; border: 1px solid var(--color-card-border); border-radius: 12px;
+                padding: 12px 14px; font-family: inherit; font-size: 0.95rem; color: var(--color-text); background: var(--color-card);
+            }
+            .field-input:disabled { color: var(--color-text-muted); background: var(--color-tile); cursor: not-allowed; }
+
+            .field-error { display: block; margin-top: 6px; font-size: 0.82rem; color: var(--color-warn-text); }
+
+            .save-button {
+                display: block; width: 100%; margin-top: 28px; border: none; border-radius: 14px; padding: 15px;
+                background: var(--color-button-bg); color: var(--color-button-text);
+                font-weight: 700; font-size: 0.95rem; cursor: pointer; font-family: inherit;
+            }
+        </style>
+
+        <div class="page">
+            <div class="avatar-wrap">
+                <div class="avatar"
+                     th:text="${form.businessName != null and !form.businessName.isEmpty()} ? ${#strings.substring(form.businessName, 0, 1)} : '?'"></div>
+            </div>
+
+            <form th:action="@{/me/edit}" th:object="${form}" method="post">
+                <label class="field-label" for="businessName">이름</label>
+                <input id="businessName" type="text" th:field="*{businessName}" class="field-input">
+                <span class="field-error" th:if="${#fields.hasErrors('businessName')}" th:errors="*{businessName}"></span>
+
+                <label class="field-label" for="email">이메일</label>
+                <input id="email" type="text" disabled class="field-input"
+                       th:value="${email != null and !email.isEmpty()} ? ${email} : '등록된 이메일이 없어요'">
+
+                <button type="submit" class="save-button">저장하기</button>
+            </form>
+        </div>
+    </main>
+    <div th:replace="~{fragments/layout :: appTabbar('more')}"></div>
+</body>
+</html>

@@ -90,50 +90,10 @@
             border-radius: 999px;
         }
 
-        .profile-username {
+        .profile-email {
             color: var(--color-text-muted);
             font-size: 0.85rem;
             margin-top: 4px;
-        }
-
-        .section-title {
-            font-weight: 700;
-            font-size: 0.95rem;
-            margin-bottom: 10px;
-        }
-
-        .channel-chips {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 8px;
-            margin-bottom: 24px;
-        }
-
-        .channel-chip {
-            display: flex;
-            align-items: center;
-            gap: 6px;
-            padding: 8px 14px;
-            border-radius: 999px;
-            background: var(--color-accent);
-            font-size: 0.85rem;
-        }
-
-        .channel-dot {
-            width: 6px;
-            height: 6px;
-            border-radius: 999px;
-            background: var(--color-ok-text);
-        }
-
-        .empty-channels {
-            color: var(--color-text-muted);
-            font-size: 0.85rem;
-            margin-bottom: 24px;
-        }
-
-        .empty-channels a {
-            text-decoration: underline;
         }
 
         .menu-list {
@@ -172,26 +132,26 @@
             flex-shrink: 0;
         }
 
-        .logout-button {
+        .withdraw-button {
             display: block;
             width: 100%;
             text-align: center;
-            padding: 16px;
-            border-radius: 16px;
-            border: none;
-            background: var(--color-button-bg);
-            color: var(--color-button-text);
+            padding: 14px;
+            border-radius: 14px;
+            border: 1px solid var(--color-warn-text);
+            background: none;
+            color: var(--color-warn-text);
             font-weight: 700;
-            font-size: 1rem;
+            font-size: 0.95rem;
             cursor: pointer;
-            margin-bottom: 16px;
+            font-family: inherit;
         }
 
-        .withdraw-link {
-            display: block;
+        .withdraw-hint {
             text-align: center;
             color: var(--color-text-muted);
-            font-size: 0.85rem;
+            font-size: 0.78rem;
+            margin: 10px 0 0;
         }
     </style>
 </head>
@@ -205,29 +165,12 @@
                     <span class="profile-name" th:text="${member.businessName}"></span>
                     <span class="badge-seller">판매자</span>
                 </div>
-                <div class="profile-username" th:text="${member.username}"></div>
+                <div class="profile-email" th:text="${member.email != null and !member.email.isEmpty()} ? ${member.email} : '이메일 미등록'"></div>
             </div>
         </div>
 
-        <p class="section-title">연결된 주문 채널 태그</p>
-        <div class="channel-chips" th:if="${!#lists.isEmpty(salesChannels)}">
-            <span class="channel-chip" th:each="channel : ${salesChannels}">
-                <span class="channel-dot"></span>
-                <span th:text="${channel}"></span>
-            </span>
-        </div>
-        <p class="empty-channels" th:if="${#lists.isEmpty(salesChannels)}">
-            등록된 주문 채널 태그가 없습니다. <a href="/channels/tags">태그 등록하기</a>
-        </p>
-        <p class="empty-channels" th:if="${!#lists.isEmpty(salesChannels)}">
-            <a href="/channels/tags">채널 태그 관리</a>
-        </p>
-        <p class="empty-channels">
-            <a href="/channels">판매 채널 API로 연동하고 상품 가져오기 →</a>
-        </p>
-
         <div class="card menu-list">
-            <div class="menu-row">
+            <a href="/me/edit" class="menu-row">
                 <svg class="menu-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                     <circle cx="12" cy="8" r="4"></circle>
                     <path d="M4 20c0-4 4-6 8-6s8 2 8 6"></path>
@@ -236,8 +179,8 @@
                 <svg class="menu-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                     <polyline points="9 6 15 12 9 18"></polyline>
                 </svg>
-            </div>
-            <div class="menu-row">
+            </a>
+            <a href="/me/password" class="menu-row">
                 <svg class="menu-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                     <rect x="5" y="11" width="14" height="9" rx="2"></rect>
                     <path d="M8 11V7a4 4 0 0 1 8 0v4"></path>
@@ -246,44 +189,11 @@
                 <svg class="menu-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                     <polyline points="9 6 15 12 9 18"></polyline>
                 </svg>
-            </div>
-            <div class="menu-row">
-                <svg class="menu-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M6 8a6 6 0 0 1 12 0c0 5 2 6 2 6H4s2-1 2-6"></path>
-                    <path d="M10 21a2 2 0 0 0 4 0"></path>
-                </svg>
-                <span class="menu-label">알림 설정</span>
-                <svg class="menu-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <polyline points="9 6 15 12 9 18"></polyline>
-                </svg>
-            </div>
-            <div class="menu-row">
-                <svg class="menu-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M7 3h7l4 4v14H7z"></path>
-                    <line x1="10" y1="11" x2="16" y2="11"></line>
-                    <line x1="10" y1="15" x2="16" y2="15"></line>
-                </svg>
-                <span class="menu-label">공지사항</span>
-                <svg class="menu-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <polyline points="9 6 15 12 9 18"></polyline>
-                </svg>
-            </div>
-            <div class="menu-row">
-                <svg class="menu-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M12 3l8 4v5c0 5-3.5 8.5-8 9-4.5-.5-8-4-8-9V7z"></path>
-                </svg>
-                <span class="menu-label">이용약관 · 개인정보</span>
-                <svg class="menu-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <polyline points="9 6 15 12 9 18"></polyline>
-                </svg>
-            </div>
+            </a>
         </div>
 
-        <form th:action="@{/logout}" method="post">
-            <button type="submit" class="logout-button">로그아웃</button>
-        </form>
-
-        <span class="withdraw-link">회원 탈퇴</span>
+        <button type="button" class="withdraw-button">회원 탈퇴</button>
+        <p class="withdraw-hint">탈퇴 시 모든 상품·재고 데이터가 삭제돼요.</p>
     </div>
     <div th:replace="~{fragments/layout :: appTabbar('more')}"></div>
 </body>

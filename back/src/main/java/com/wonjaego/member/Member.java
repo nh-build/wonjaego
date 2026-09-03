@@ -28,18 +28,31 @@ public class Member extends BaseEntity {
     @Column(nullable = false)
     private String businessName;
 
+    // 선택 입력 — 회원가입 폼에 넣을지 말지는 가입자 자유, 기존 계정은 비어 있다.
+    // 프로필 수정 화면에서 변경 불가(비활성 표시)로, 변경 경로 자체가 없다.
+    private String email;
+
     // 설정 화면의 "재고 임박 기준" — a variant with no per-variant override
     // (ProductVariant.lowStockThreshold == null) falls back to this.
     @Column(nullable = false)
     private int lowStockThreshold = DEFAULT_LOW_STOCK_THRESHOLD;
 
-    public Member(String username, String password, String businessName) {
+    public Member(String username, String password, String businessName, String email) {
         this.username = username;
         this.password = password;
         this.businessName = businessName;
+        this.email = email;
     }
 
     public void updateLowStockThreshold(int lowStockThreshold) {
         this.lowStockThreshold = lowStockThreshold;
+    }
+
+    public void updateBusinessName(String businessName) {
+        this.businessName = businessName;
+    }
+
+    public void updatePassword(String encodedPassword) {
+        this.password = encodedPassword;
     }
 }

@@ -12,7 +12,7 @@ import org.junit.jupiter.api.Test;
 // "19,000원~" (comma-grouped, "원" suffix, "~" only when variants' prices differ).
 class ProductVariantPriceRangeTest {
 
-    private final Member member = new Member("seller", "password123", "가게");
+    private final Member member = new Member("seller", "password123", "가게", null);
     private final Product product = new Product(member, "상품");
 
     @Test

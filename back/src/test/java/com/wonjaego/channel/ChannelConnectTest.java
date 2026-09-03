@@ -107,10 +107,11 @@ class ChannelConnectTest {
     }
 
     @Test
-    void 내_정보에서_판매채널_목록으로_이동할_수_있다() throws Exception {
+    void 더보기에서_판매채널_목록으로_이동할_수_있다() throws Exception {
         MockHttpSession session = AuthTestSupport.signUpAndLogin(mockMvc, "conn5", "password123", "가게5");
 
-        mockMvc.perform(get("/me").session(session))
+        // 판매채널 연동은 내 정보가 아니라 더보기 화면에서만 진입한다.
+        mockMvc.perform(get("/more").session(session))
                 .andExpect(status().isOk())
                 .andExpect(content().string(containsString("href=\"/channels\"")));
     }
