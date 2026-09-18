@@ -5,6 +5,10 @@ build/
 !**/src/main/**/build/
 !**/src/test/**/build/
 
+### Deploy secrets ###
+.env
+!.env.example
+
 ### Dev H2 file database ###
 data/
 

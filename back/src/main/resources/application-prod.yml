@@ -1,0 +1,32 @@
+spring:
+  datasource:
+    url: ${DB_URL}
+    username: ${DB_USER}
+    password: ${DB_PASSWORD}
+  jpa:
+    hibernate:
+      # update — 최초 배포용. 스키마가 안정된 뒤에는 flyway/liquibase 마이그레이션으로
+      # 바꾸는 걸 권장(운영 DB에 auto-ddl을 계속 맡기는 건 위험).
+      ddl-auto: update
+  servlet:
+    multipart:
+      max-file-size: 20MB
+      max-request-size: 25MB
+
+server:
+  # EC2 앞에 리버스 프록시/로드밸런서를 둘 걸 가정 — X-Forwarded-* 헤더를 신뢰해
+  # 리다이렉트·쿠키 등이 프록시 뒤에서도 올바른 scheme/host로 계산되게 한다.
+  forward-headers-strategy: native
+
+wonjaego:
+  encryption:
+    # 기본 profile(application.properties)의 WONJAEGO_ENCRYPTION_KEY 대신 CHANNEL_ENC_KEY로
+    # 받는다. dev와 달리 빈 값으로 폴백하지 않음 — 안 채워져 있으면 부팅 시점에 바로 실패해서
+    # 채널 API 키가 약한 기본 키로 암호화되는 사고를 막는다.
+    key: ${CHANNEL_ENC_KEY}
+  storage:
+    local:
+      # 컨테이너 로컬 파일시스템 — 볼륨을 마운트하지 않으면 컨테이너를 재생성할 때
+      # 업로드된 상품 사진이 사라진다. 사진을 영구 보존하려면 이 경로를 볼륨(또는 S3 등
+      # 외부 스토리지로 FileStorage 구현체 교체)으로 옮길 것.
+      base-directory: /app/data/product-photos
