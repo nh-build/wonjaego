@@ -51,6 +51,12 @@ public class Product extends BaseEntity {
     // price, ADR 0008). Optional — used only to show margin/margin rate against the base price.
     private BigDecimal costPrice;
 
+    // 상의/하의/원피스/투피스 중 하나, 또는 "직접입력"으로 타이핑한 자유 텍스트. 선택 입력이라
+    // null/blank 허용 — 기존에 등록된 상품은 전부 이 컬럼이 비어 있다(마이그레이션 없이
+    // ddl-auto=update로 nullable 컬럼만 추가됨). AI 상품명 추천이 사진 속 어느 부분을
+    // 대상으로 이름을 지을지 정하는 데 쓰인다(GeminiNameSuggestionClient 참고).
+    private String category;
+
     public Product(Member member, String name) {
         this.member = member;
         this.name = name;
@@ -77,6 +83,10 @@ public class Product extends BaseEntity {
 
     public void updateCostPrice(BigDecimal costPrice) {
         this.costPrice = costPrice;
+    }
+
+    public void updateCategory(String category) {
+        this.category = category;
     }
 
     // Single source of truth for "what image URL represents this product" — a locally

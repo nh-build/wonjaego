@@ -1,5 +1,6 @@
 package com.wonjaego.member;
 
+import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -11,6 +12,15 @@ public class MemberService {
 
     private final MemberRepository memberRepository;
     private final PasswordEncoder passwordEncoder;
+
+    // 아이디 찾기 — 이 흐름은 (비밀번호 재설정과 달리) 계정 존재 여부를 감춰야 하는 요건이
+    // 없으므로, 일치하는 계정마다 마스킹된 아이디를 그대로 보여준다. 빈 리스트면 "계정 없음".
+    @Transactional(readOnly = true)
+    public List<String> findMaskedUsernamesByEmail(String email) {
+        return memberRepository.findByEmail(email).stream()
+                .map(member -> UsernameMasker.mask(member.getUsername()))
+                .toList();
+    }
 
     @Transactional
     public Member signUp(String username, String rawPassword, String businessName, String email) {

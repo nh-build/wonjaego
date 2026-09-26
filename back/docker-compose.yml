@@ -24,6 +24,13 @@ services:
       DB_USER: ${MYSQL_USER}
       DB_PASSWORD: ${MYSQL_PASSWORD}
       CHANNEL_ENC_KEY: ${CHANNEL_ENC_KEY}
+      APP_UPLOAD_DIR: /app/data/product-photos
+      MAIL_USERNAME: ${MAIL_USERNAME}
+      MAIL_PASSWORD: ${MAIL_PASSWORD}
+      APP_BASE_URL: ${APP_BASE_URL}
+      GEMINI_API_KEY: ${GEMINI_API_KEY}
+    volumes:
+      - ./data/product-photos:/app/data/product-photos
     restart: always
 
 volumes:

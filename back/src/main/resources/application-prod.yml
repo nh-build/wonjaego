@@ -17,6 +17,12 @@ server:
   # EC2 앞에 리버스 프록시/로드밸런서를 둘 걸 가정 — X-Forwarded-* 헤더를 신뢰해
   # 리다이렉트·쿠키 등이 프록시 뒤에서도 올바른 scheme/host로 계산되게 한다.
   forward-headers-strategy: native
+  servlet:
+    session:
+      cookie:
+        # request.isSecure()에 암묵적으로 맡기지 않고 명시한다 — 운영은 항상 HTTPS(프록시
+        # 뒤든 아니든)이므로 항상 true. dev는 application-dev.properties에서 false로 고정.
+        secure: true
 
 wonjaego:
   encryption:
@@ -26,7 +32,10 @@ wonjaego:
     key: ${CHANNEL_ENC_KEY}
   storage:
     local:
-      # 컨테이너 로컬 파일시스템 — 볼륨을 마운트하지 않으면 컨테이너를 재생성할 때
-      # 업로드된 상품 사진이 사라진다. 사진을 영구 보존하려면 이 경로를 볼륨(또는 S3 등
-      # 외부 스토리지로 FileStorage 구현체 교체)으로 옮길 것.
-      base-directory: /app/data/product-photos
+      # 컨테이너 로컬 파일시스템에 저장 — docker-compose.yml에서 이 경로를 호스트 볼륨으로
+      # 마운트해야 컨테이너 재생성 시에도 업로드된 상품 사진이 유지된다.
+      base-directory: ${APP_UPLOAD_DIR:/app/data/product-photos}
+  app:
+    # 기본값을 주지 않는다 — 잘못된(예: localhost) 도메인으로 비밀번호 재설정 메일이 실제
+    # 사용자에게 나가는 사고를 막기 위해, 값이 없으면 부팅 자체가 실패해야 한다.
+    base-url: ${APP_BASE_URL}

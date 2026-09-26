@@ -32,6 +32,9 @@ public class ProductCreateForm {
     @DecimalMin(value = "0", message = "원가는 0 이상이어야 합니다.")
     private BigDecimal costPrice;
 
+    // 상의/하의/원피스/투피스 중 하나, 또는 "직접입력"으로 타이핑한 자유 텍스트. 선택 입력.
+    private String category;
+
     // Submitted as indexed request params (optionGroups[0].name, optionGroups[0].valuesText,
     // optionGroups[1].name, ...) by dynamically added/removed rows on the registration
     // screen — Spring's binder auto-grows this list from those indexed params, so it starts

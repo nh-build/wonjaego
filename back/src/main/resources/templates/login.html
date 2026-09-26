@@ -12,6 +12,7 @@
                     <p th:if="${param.error}" class="alert alert-error text-sm py-2 mb-3">아이디 또는 비밀번호가 올바르지 않습니다.</p>
                     <p th:if="${param.registered}" class="alert alert-success text-sm py-2 mb-3">가입이 완료됐습니다. 로그인해주세요.</p>
                     <p th:if="${param.logout}" class="alert alert-info text-sm py-2 mb-3">로그아웃되었습니다.</p>
+                    <p th:if="${param.reset}" class="alert alert-success text-sm py-2 mb-3">비밀번호가 변경됐습니다. 새 비밀번호로 로그인해주세요.</p>
 
                     <form th:action="@{/login}" method="post" class="flex flex-col gap-4">
                         <div class="flex flex-col gap-1">
@@ -28,6 +29,12 @@
                     </form>
 
                     <p class="text-center text-sm text-base-content/60 mt-4">
+                        <a href="/find-username" class="link link-primary font-medium">아이디 찾기</a>
+                        ·
+                        <a href="/reset-password" class="link link-primary font-medium">비밀번호 찾기</a>
+                    </p>
+
+                    <p class="text-center text-sm text-base-content/60 mt-2">
                         아직 회원이 아니신가요? <a href="/signup" class="link link-primary font-medium">회원가입</a>
                     </p>
                 </div>

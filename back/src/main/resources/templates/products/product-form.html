@@ -87,6 +87,13 @@
                 cursor: pointer; font-family: inherit;
             }
             .suggestion-generate-button:disabled { opacity: 0.5; cursor: not-allowed; }
+            .suggestion-generate-button.loading { display: inline-flex; align-items: center; gap: 6px; }
+            .suggestion-spinner {
+                width: 12px; height: 12px; border-radius: 50%; flex-shrink: 0;
+                border: 2px solid var(--color-card-border); border-top-color: var(--color-button-text);
+                animation: suggestion-spin 0.7s linear infinite;
+            }
+            @keyframes suggestion-spin { to { transform: rotate(360deg); } }
             .suggestion-error { font-size: 0.8rem; color: var(--color-warn-text); }
             .suggestion-results { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
             .suggestion-result-card {
@@ -224,6 +231,21 @@
                 </div>
 
                 <div class="form-card">
+                    <label class="field-label" for="category-select">카테고리 (선택)</label>
+                    <select id="category-select" class="field-input">
+                        <option value="">선택 안 함</option>
+                        <option value="상의">상의</option>
+                        <option value="하의">하의</option>
+                        <option value="원피스">원피스</option>
+                        <option value="투피스">투피스</option>
+                        <option value="직접입력">직접입력</option>
+                    </select>
+                    <input id="category-custom" type="text" placeholder="카테고리를 입력하세요"
+                           class="field-input" style="margin-top: 8px; display: none;">
+                    <span class="field-error" th:if="${#fields.hasErrors('category')}" th:errors="*{category}"></span>
+                </div>
+
+                <div class="form-card">
                     <label class="field-label" for="name">상품명</label>
                     <div class="field-row">
                         <input id="name" type="text" th:field="*{name}" placeholder="예: 린넨 여름 원피스" class="field-input">
@@ -233,14 +255,7 @@
 
                     <div id="name-suggestion-panel" class="suggestion-panel hidden">
                         <p class="suggestion-panel-title">AI 상품명 추천 (선택)</p>
-                        <div>
-                            <label class="suggestion-sub-label" for="name-suggestion-keywords">포인트 단어</label>
-                            <input type="text" id="name-suggestion-keywords" placeholder="예: 린넨, 여름, 원피스, 시원한" class="suggestion-input">
-                        </div>
-                        <div>
-                            <label class="suggestion-sub-label" for="name-suggestion-mood">컨셉/무드 (선택)</label>
-                            <input type="text" id="name-suggestion-mood" placeholder="예: 미니멀하게, 러블리하게" class="suggestion-input">
-                        </div>
+                        <p class="field-hint-inline">상품 사진과 위에서 고른 카테고리를 바탕으로 상품명을 지어드려요.</p>
                         <button type="button" id="name-suggestion-button" class="suggestion-generate-button" disabled>
                             이름 생성
                         </button>
@@ -356,6 +371,7 @@
             var IS_EDIT_MODE = /*[[${isEdit}]]*/ false;
             var INITIAL_VARIANT_SEEDS = /*[[${variantSeeds}]]*/ [];
             var INITIAL_STOCKS_JSON = null;
+            var INITIAL_CATEGORY = /*[[${form.category}]]*/ '';
         </script>
         <!-- ProductEditForm has no stocksJson property at all (stock never travels through
              this form) — reading form.stocksJson unconditionally would throw a SpelEvaluation
@@ -1019,90 +1035,86 @@
             })();
         </script>
         <script th:inline="none">
+            // 셀렉트에서 "직접입력"을 고르면 텍스트 칸이 나타나고, 제출 시에는 둘 중 실제로
+            // 보이는 쪽에만 name="category"를 붙여서 서버에는 항상 하나의 값만 넘어가게 한다.
+            (function () {
+                var select = document.getElementById('category-select');
+                var custom = document.getElementById('category-custom');
+                if (!select || !custom) {
+                    return;
+                }
+                var PRESET_VALUES = ['상의', '하의', '원피스', '투피스'];
+
+                function applyNames() {
+                    var isCustom = select.value === '직접입력';
+                    custom.style.display = isCustom ? 'block' : 'none';
+                    if (isCustom) {
+                        select.removeAttribute('name');
+                        custom.setAttribute('name', 'category');
+                    } else {
+                        select.setAttribute('name', 'category');
+                        custom.removeAttribute('name');
+                    }
+                }
+
+                select.addEventListener('change', applyNames);
+
+                if (INITIAL_CATEGORY) {
+                    if (PRESET_VALUES.indexOf(INITIAL_CATEGORY) !== -1) {
+                        select.value = INITIAL_CATEGORY;
+                    } else {
+                        select.value = '직접입력';
+                        custom.value = INITIAL_CATEGORY;
+                    }
+                }
+                applyNames();
+            })();
+        </script>
+        <script th:inline="none">
             (function () {
                 var toggleButton = document.getElementById('name-suggestion-toggle');
                 var panel = document.getElementById('name-suggestion-panel');
-                var keywordsInput = document.getElementById('name-suggestion-keywords');
-                if (!toggleButton || !panel || !keywordsInput) {
+                if (!toggleButton || !panel) {
                     return;
                 }
 
                 toggleButton.addEventListener('click', function () {
                     panel.classList.toggle('hidden');
-                    if (!panel.classList.contains('hidden')) {
-                        keywordsInput.focus();
-                    }
                 });
             })();
         </script>
         <script th:inline="none">
-            // Free, non-LLM name-suggestion generator: combines [훅 문구] + 스타일 수식어 1~2개 +
-            // 키워드. Kept as this one function so a future LLM-backed version can replace just
-            // the body and keep the same call signature (keyword, mood) -> array of 5 strings.
-            // (mood is accepted for that future swap but unused here — the pool formula has no
-            // slot for it.)
-            var HOOK_PHRASE_POOL = ['주문폭주', '오늘만 할인', '재입고', '후기극찬', '모델 강추', '단독특가', '품절임박', '당일발송', '무료배송', '1+1'];
-            var STYLE_MODIFIER_POOL = ['데일리', '오버핏', '슬림핏', '부클레', '포근한', '여리핏', '감성', '베이직', '겨울신상', '하이엔드'];
-
-            function shuffledCopy(pool) {
-                var copy = pool.slice();
-                for (var i = copy.length - 1; i > 0; i--) {
-                    var j = Math.floor(Math.random() * (i + 1));
-                    var tmp = copy[i];
-                    copy[i] = copy[j];
-                    copy[j] = tmp;
-                }
-                return copy;
-            }
-
-            // 콤마로 구분된 여러 포인트 단어를 하나의 공백 구분 키워드 구문으로 정리한다.
-            // 예: "니트, 가디건" -> "니트 가디건".
-            function toKeywordPhrase(rawKeywords) {
-                return (rawKeywords || '')
-                    .split(',')
-                    .map(function (part) { return part.trim().replace(/\s+/g, ' '); })
-                    .filter(function (part) { return part.length > 0; })
-                    .join(' ');
-            }
-
-            function generateNameSuggestions(keyword, mood) {
-                var keywordPhrase = toKeywordPhrase(keyword);
-                if (!keywordPhrase) {
-                    return [];
-                }
-
-                var hooks = shuffledCopy(HOOK_PHRASE_POOL);
-                var modifiers = shuffledCopy(STYLE_MODIFIER_POOL);
-
-                var suggestions = [];
-                var modifierCursor = 0;
-                for (var i = 0; i < 5; i++) {
-                    // 1~2개씩 뽑아도 5개 후보 전체에서 최대 10개까지만 필요하므로, 수식어 풀(10개)을
-                    // 앞에서부터 순서대로 나눠 쓰기만 하면 후보 사이에 겹치는 수식어가 생기지 않는다.
-                    var modifierCount = Math.random() < 0.5 ? 1 : 2;
-                    var pickedModifiers = modifiers.slice(modifierCursor, modifierCursor + modifierCount);
-                    modifierCursor += modifierCount;
-                    suggestions.push('[' + hooks[i] + '] ' + pickedModifiers.join(' ') + ' ' + keywordPhrase);
-                }
-                return suggestions;
-            }
-
+            // 실제 Gemini 호출 — 사진이 선택된 상태에서만 활성화되고, 클릭했을 때만(자동 호출
+            // 없이) 사진을 리사이즈/압축한 뒤 서버로 보낸다.
             (function () {
-                var keywordsInput = document.getElementById('name-suggestion-keywords');
-                var moodInput = document.getElementById('name-suggestion-mood');
                 var suggestButton = document.getElementById('name-suggestion-button');
                 var resultsBox = document.getElementById('name-suggestion-results');
                 var errorBox = document.getElementById('name-suggestion-error');
                 var nameInput = document.getElementById('name');
-                if (!keywordsInput || !moodInput || !suggestButton || !resultsBox || !errorBox || !nameInput) {
+                var photoInput = document.getElementById('photo');
+                var categorySelect = document.getElementById('category-select');
+                var categoryCustom = document.getElementById('category-custom');
+                if (!suggestButton || !resultsBox || !errorBox || !nameInput || !photoInput) {
                     return;
                 }
 
                 var DEFAULT_LABEL = '이름 생성';
-                var REGENERATE_LABEL = '재생성';
+                var LOADING_LABEL = 'AI가 분석 중...';
+                var MAX_DIMENSION = 1024;
+                var JPEG_QUALITY = 0.8;
+
+                function currentCategory() {
+                    if (!categorySelect) {
+                        return '';
+                    }
+                    if (categorySelect.value === '직접입력') {
+                        return categoryCustom ? categoryCustom.value.trim() : '';
+                    }
+                    return categorySelect.value;
+                }
 
                 function updateButtonEnabled() {
-                    suggestButton.disabled = keywordsInput.value.trim().length === 0;
+                    suggestButton.disabled = !(photoInput.files && photoInput.files.length > 0);
                 }
 
                 function clearResults() {
@@ -1131,27 +1143,98 @@
                     return card;
                 }
 
-                keywordsInput.addEventListener('input', updateButtonEnabled);
+                function setLoading(isLoading) {
+                    if (isLoading) {
+                        suggestButton.disabled = true;
+                        suggestButton.classList.add('loading');
+                        suggestButton.innerHTML = '<span class="suggestion-spinner"></span>' + LOADING_LABEL;
+                    } else {
+                        suggestButton.classList.remove('loading');
+                        suggestButton.textContent = DEFAULT_LABEL;
+                        updateButtonEnabled();
+                    }
+                }
+
+                // 전송 전 리사이즈/압축 — 원본을 그대로 보내면 비용/속도가 낭비된다.
+                function resizeImage(file) {
+                    return new Promise(function (resolve, reject) {
+                        var img = new Image();
+                        var url = URL.createObjectURL(file);
+                        img.onload = function () {
+                            URL.revokeObjectURL(url);
+                            var scale = Math.min(1, MAX_DIMENSION / Math.max(img.width, img.height));
+                            var width = Math.max(1, Math.round(img.width * scale));
+                            var height = Math.max(1, Math.round(img.height * scale));
+                            var canvas = document.createElement('canvas');
+                            canvas.width = width;
+                            canvas.height = height;
+                            canvas.getContext('2d').drawImage(img, 0, 0, width, height);
+                            canvas.toBlob(function (blob) {
+                                if (!blob) {
+                                    reject(new Error('resize failed'));
+                                    return;
+                                }
+                                resolve(blob);
+                            }, 'image/jpeg', JPEG_QUALITY);
+                        };
+                        img.onerror = function () {
+                            URL.revokeObjectURL(url);
+                            reject(new Error('image load failed'));
+                        };
+                        img.src = url;
+                    });
+                }
+
+                function csrfHeaders() {
+                    var tokenMeta = document.querySelector('meta[name="_csrf"]');
+                    var headerMeta = document.querySelector('meta[name="_csrf_header"]');
+                    var headers = {};
+                    if (tokenMeta && headerMeta) {
+                        headers[headerMeta.content] = tokenMeta.content;
+                    }
+                    return headers;
+                }
+
+                photoInput.addEventListener('change', updateButtonEnabled);
 
                 suggestButton.addEventListener('click', function () {
-                    var keywords = keywordsInput.value.trim();
-                    if (!keywords) {
+                    var file = photoInput.files && photoInput.files[0];
+                    if (!file) {
                         return;
                     }
 
                     hideError();
                     clearResults();
+                    setLoading(true);
 
-                    var names = generateNameSuggestions(keywords, moodInput.value);
-                    if (names.length === 0) {
-                        showError('상품명을 만드는 데 실패했습니다. 다시 시도해주세요.');
-                    } else {
-                        names.forEach(function (name) {
-                            resultsBox.appendChild(buildResultCard(name));
+                    resizeImage(file).then(function (resizedBlob) {
+                        var formData = new FormData();
+                        formData.append('photo', resizedBlob, 'photo.jpg');
+                        formData.append('category', currentCategory());
+
+                        return fetch('/products/name-suggestions', {
+                            method: 'POST',
+                            headers: csrfHeaders(),
+                            body: formData
                         });
-                    }
-                    suggestButton.textContent = REGENERATE_LABEL;
-                    updateButtonEnabled();
+                    }).then(function (response) {
+                        if (!response.ok) {
+                            throw new Error('request failed');
+                        }
+                        return response.json();
+                    }).then(function (names) {
+                        if (!names || names.length === 0) {
+                            showError('AI 추천에 실패했어요. 잠시 후 다시 시도하거나 직접 입력해주세요.');
+                        } else {
+                            names.forEach(function (name) {
+                                resultsBox.appendChild(buildResultCard(name));
+                            });
+                        }
+                    }).catch(function () {
+                        showError('AI 추천에 실패했어요. 잠시 후 다시 시도하거나 직접 입력해주세요.');
+                    }).finally(function () {
+                        setLoading(false);
+                    });
                 });
 
                 updateButtonEnabled();

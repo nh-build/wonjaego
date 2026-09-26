@@ -1,6 +1,5 @@
 package com.wonjaego.product;
 
-import com.wonjaego.ai.NameSuggestionClient;
 import com.wonjaego.member.MemberPrincipal;
 import com.wonjaego.member.MemberService;
 import com.wonjaego.movement.InvalidStockMovementException;
@@ -9,7 +8,6 @@ import com.wonjaego.movement.MovementType;
 import com.wonjaego.storage.FileStorage;
 import jakarta.validation.Valid;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -29,6 +27,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseBody;
+import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 @Controller
@@ -39,7 +38,7 @@ public class ProductController {
     private final ProductVariantService productVariantService;
     private final MovementService movementService;
     private final FileStorage fileStorage;
-    private final NameSuggestionClient nameSuggestionClient;
+    private final NameSuggestionService nameSuggestionService;
     private final MemberService memberService;
 
     // 등록 전용 화면 — 상품 목록과 분리(등록은 등록에만 집중). GET /products는 목록 화면이다.
@@ -179,12 +178,9 @@ public class ProductController {
     // anyRequest().authenticated(), so no @AuthenticationPrincipal parameter is needed.
     @PostMapping("/products/name-suggestions")
     @ResponseBody
-    public List<String> suggestNames(@RequestBody NameSuggestionRequest request) {
-        List<String> keywords = parseKeywords(request.keywords());
-        if (keywords.isEmpty()) {
-            throw new InvalidNameSuggestionRequestException("포인트 단어를 입력해주세요.");
-        }
-        return nameSuggestionClient.suggest(keywords, request.mood());
+    public List<String> suggestNames(@RequestParam(value = "photo", required = false) MultipartFile photo,
+                                      @RequestParam(value = "category", required = false) String category) {
+        return nameSuggestionService.suggest(photo, category);
     }
 
     // Backs the 입고하기/출고하기 screens' product-name search dropdown.
@@ -228,17 +224,6 @@ public class ProductController {
                 .toList();
         return new ProductStockEntryResponse(product.getId(), product.getName(), product.resolveImageUrl(),
                 matchedSku, entryVariants);
-    }
-
-    private List<String> parseKeywords(String rawKeywords) {
-        if (rawKeywords == null) {
-            return List.of();
-        }
-        return Arrays.stream(rawKeywords.split(","))
-                .map(String::trim)
-                .filter(keyword -> !keyword.isEmpty())
-                .distinct()
-                .toList();
     }
 
     @GetMapping("/products/{id}/edit")

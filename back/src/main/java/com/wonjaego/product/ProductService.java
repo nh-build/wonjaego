@@ -228,6 +228,7 @@ public class ProductService {
         Member member = memberRepository.getReferenceById(memberId);
         Product product = productRepository.save(new Product(member, form.getName()));
         product.updateCostPrice(form.getCostPrice());
+        product.updateCategory(form.getCategory());
 
         List<List<OptionValue>> groupsOfValues = new ArrayList<>();
         for (ParsedOptionGroup group : optionGroups) {
@@ -354,6 +355,7 @@ public class ProductService {
         // ---- Mutation phase — every validation above has passed. ----
         product.updateInfo(form.getName());
         product.updateCostPrice(form.getCostPrice());
+        product.updateCategory(form.getCategory());
 
         List<List<OptionValue>> groupsOfValues = new ArrayList<>();
         for (ParsedEditGroup group : parsedGroups) {

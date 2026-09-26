@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" data-theme="wonjaego">
+<head th:replace="~{fragments/layout :: head('아이디 찾기')}"></head>
+<body>
+    <main class="flex items-center justify-center min-h-[100dvh] p-6 box-border">
+        <div class="card w-full max-w-[360px] bg-base-200 shadow-sm rounded-3xl">
+            <div class="card-body items-center gap-4">
+                <img src="/logo_ver1.png" alt="원재고" class="w-40 h-auto">
+                <p class="login-tagline -mt-2">아이디 찾기</p>
+
+                <div class="w-full" th:if="${submitted}">
+                    <div th:if="${not #lists.isEmpty(maskedUsernames)}" class="alert alert-success text-sm py-2 mb-3">
+                        <div>
+                            <p>입력하신 이메일로 가입된 아이디입니다.</p>
+                            <p th:each="masked : ${maskedUsernames}" th:text="${masked}" class="font-bold"></p>
+                        </div>
+                    </div>
+                    <p th:if="${#lists.isEmpty(maskedUsernames)}" class="alert alert-error text-sm py-2 mb-3">
+                        입력하신 이메일로 가입된 계정을 찾을 수 없습니다.
+                    </p>
+                </div>
+
+                <div class="w-full">
+                    <form th:action="@{/find-username}" th:object="${form}" method="post" class="flex flex-col gap-4">
+                        <div class="flex flex-col gap-1">
+                            <label class="label" for="email">가입 시 등록한 이메일</label>
+                            <input id="email" type="email" th:field="*{email}" placeholder="you@example.com"
+                                   class="input input-bordered rounded-full w-full">
+                            <span class="text-error text-sm" th:if="${#fields.hasErrors('email')}" th:errors="*{email}"></span>
+                        </div>
+                        <button type="submit" class="btn btn-primary rounded-full mt-2">아이디 찾기</button>
+                    </form>
+
+                    <p class="text-center text-sm text-base-content/60 mt-4">
+                        <a href="/login" class="link link-primary font-medium">로그인으로 돌아가기</a>
+                    </p>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <style>
+        .login-tagline {
+            font-family: Georgia, 'Times New Roman', serif;
+            color: var(--sub);
+            letter-spacing: 0.05em;
+            font-size: 0.95rem;
+            margin: 0;
+        }
+    </style>
+</body>
+</html>

@@ -16,6 +16,12 @@
                         <span class="text-error text-sm" th:if="${#fields.hasErrors('username')}" th:errors="*{username}"></span>
                     </div>
                     <div class="flex flex-col gap-1">
+                        <label class="label" for="email">이메일</label>
+                        <input id="email" type="email" th:field="*{email}" placeholder="you@example.com"
+                               class="input input-bordered rounded-full w-full">
+                        <span class="text-error text-sm" th:if="${#fields.hasErrors('email')}" th:errors="*{email}"></span>
+                    </div>
+                    <div class="flex flex-col gap-1">
                         <label class="label" for="password">비밀번호</label>
                         <input id="password" type="password" th:field="*{password}" placeholder="비밀번호를 입력하세요"
                                class="input input-bordered rounded-full w-full">

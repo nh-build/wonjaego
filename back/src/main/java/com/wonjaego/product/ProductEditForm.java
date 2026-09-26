@@ -43,6 +43,9 @@ public class ProductEditForm {
     @DecimalMin(value = "0", message = "원가는 0 이상이어야 합니다.")
     private BigDecimal costPrice;
 
+    // 상의/하의/원피스/투피스 중 하나, 또는 "직접입력"으로 타이핑한 자유 텍스트. 선택 입력.
+    private String category;
+
     @Size(max = 20, message = "옵션은 최대 20개까지 추가할 수 있습니다.")
     private List<OptionGroupInput> optionGroups = new ArrayList<>();
 
@@ -58,6 +61,7 @@ public class ProductEditForm {
         ProductEditForm form = new ProductEditForm();
         form.setName(product.getName());
         form.setCostPrice(product.getCostPrice());
+        form.setCategory(product.getCategory());
         form.setPrice(variants.stream().map(ProductVariant::getPrice).min(Comparator.naturalOrder()).orElse(BigDecimal.ZERO));
 
         Map<OptionGroup, LinkedHashSet<String>> valuesByGroup = new LinkedHashMap<>();
