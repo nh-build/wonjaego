@@ -199,6 +199,50 @@
             .barcode-toggle-label { font-size: 0.9rem; font-weight: 700; color: var(--color-text); }
             .barcode-toggle-hint { margin-top: 6px; font-size: 0.78rem; color: var(--color-text-muted); }
 
+            /* 기본 정보 카드들과 "옵션 · 재고" 카드를 시각적으로 분리 — 카드 자체는 그대로
+               .form-card를 쓰되, 이 카드만 위쪽에 여백+구분선을 추가로 얹는다. */
+            .form-card-section-start { margin-top: 28px; padding-top: 20px; border-top: 1px solid var(--color-card-border); }
+
+            .section-hr { border: none; border-top: 1px dashed var(--color-card-border); margin: 16px 0; }
+
+            .barcode-scan-row { display: flex; gap: 8px; margin-top: 8px; }
+            .barcode-scan-row .field-input { flex: 1; min-width: 0; }
+            .barcode-scan-trigger, .variant-stock-scan-button {
+                flex-shrink: 0; border: 1px solid var(--color-button-bg); background: none; border-radius: 10px;
+                padding: 0 12px; font-size: 0.8rem; font-weight: 700; color: var(--color-button-text);
+                cursor: pointer; font-family: inherit; white-space: nowrap;
+            }
+
+            .variant-stock-row { flex-wrap: wrap; }
+            .variant-stock-barcode-row {
+                flex-basis: 100%; display: flex; align-items: center; gap: 8px;
+                margin-top: 8px; padding-top: 8px; border-top: 1px dashed var(--color-card-border);
+            }
+            .variant-stock-barcode-input {
+                flex: 1; min-width: 0; box-sizing: border-box; border: 1px solid var(--color-card-border); border-radius: 8px;
+                padding: 5px 8px; font-family: inherit; font-size: 0.8rem; background: var(--color-card); color: var(--color-text);
+            }
+
+            .scan-modal-overlay {
+                position: fixed; inset: 0; background: rgba(0, 0, 0, 0.55); z-index: 1000;
+                display: flex; align-items: center; justify-content: center; padding: 20px; box-sizing: border-box;
+            }
+            .scan-modal-overlay.hidden { display: none; }
+            .scan-modal {
+                width: 100%; max-width: 360px; max-height: 80vh; overflow: auto;
+                background: var(--color-card); border-radius: 18px; padding: 16px;
+                display: flex; flex-direction: column; gap: 10px;
+            }
+            .scan-modal-header { display: flex; align-items: center; justify-content: space-between; }
+            .scan-modal-title { font-size: 0.95rem; font-weight: 700; color: var(--color-text); }
+            .scan-modal-close {
+                border: none; background: var(--color-tile); color: var(--color-text);
+                width: 32px; height: 32px; border-radius: 999px; font-size: 0.9rem; cursor: pointer;
+            }
+            #barcode-scan-reader { width: 100%; min-height: 220px; border-radius: 12px; overflow: hidden; background: #000; }
+            .scan-modal-message { margin: 0; font-size: 0.82rem; color: var(--color-text-muted); }
+            .scan-modal-message.error { color: var(--color-warn-text); }
+
             .disappearing-warning {
                 background: var(--color-warn-bg); color: var(--color-warn-text);
                 border-radius: 12px; padding: 12px 14px; margin-bottom: 12px; font-size: 0.82rem; font-weight: 600;
@@ -296,9 +340,9 @@
                     </div>
                 </div>
 
-                <div class="form-card">
+                <div class="form-card form-card-section-start">
                     <div class="card-section-header">
-                        <span class="card-section-title">옵션 &amp; 재고 (선택)</span>
+                        <span class="card-section-title">옵션 · 재고</span>
                     </div>
 
                     <div class="card-section-header" style="margin-bottom: 0;">
@@ -336,6 +380,11 @@
                         <label class="field-label" for="single-stock-input" th:text="${isEdit} ? '재고' : '총 재고'"></label>
                         <input type="number" id="single-stock-input" min="0" value="0" class="field-input">
                         <p th:if="${isEdit}" class="field-hint">※ 재고는 상품 상세 화면에서 조정할 수 있어요</p>
+
+                        <div th:unless="${isEdit}" class="barcode-scan-row">
+                            <input type="text" id="single-barcode-input" placeholder="바코드 (선택)" class="field-input">
+                            <button type="button" class="barcode-scan-trigger" data-target="single-barcode-input">📷 스캔</button>
+                        </div>
                     </div>
 
                     <div id="total-stock-summary" class="hidden">
@@ -348,13 +397,20 @@
 
                     <input th:if="${!isEdit}" type="hidden" id="stocks-json-input" th:field="*{stocksJson}">
                     <input type="hidden" id="prices-json-input" th:field="*{pricesJson}">
+                    <input th:unless="${isEdit}" type="hidden" id="barcodes-json-input" th:field="*{barcodesJson}">
 
+                    <hr class="section-hr">
+
+                    <div class="card-section-header" style="margin-bottom: 0;">
+                        <span class="field-label" style="margin-bottom: 0;">바코드</span>
+                    </div>
                     <div class="barcode-toggle-row">
                         <input type="checkbox" id="auto-generate-barcode" class="barcode-toggle-checkbox" th:field="*{autoGenerateBarcode}">
                         <label for="auto-generate-barcode" class="barcode-toggle-label">옵션별 바코드 자동 생성</label>
                     </div>
                     <p class="barcode-toggle-hint"
-                       th:text="${isEdit} ? '체크하면 새로 추가되는 옵션에도 고유 바코드가 생겨요. 기존 옵션의 바코드는 그대로예요.' : '저장하면 옵션 조합마다 고유 바코드가 생겨요. 상세에서 보기·인쇄'"></p>
+                       th:text="${isEdit} ? '체크하면 새로 추가되는 옵션에도 고유 바코드가 생겨요. 기존 옵션의 바코드는 그대로예요.' : '체크하면 저장 시 새 바코드를 자동으로 만들어요. 상세에서 보기·인쇄'"></p>
+                    <p th:unless="${isEdit}" class="barcode-toggle-hint">※ 이미 있는 바코드가 있다면 자동 생성 대신 위 옵션별 바코드 칸에 스캔하거나 직접 입력하세요.</p>
                 </div>
 
                 <p id="disappearing-warning" class="disappearing-warning hidden"></p>
@@ -362,6 +418,19 @@
                 <button type="submit" id="submit-button" class="submit-button" th:text="${submitLabel}">저장하기</button>
             </form>
         </div>
+
+        <!-- 바코드 스캔 모달 — 등록 화면에만(수정 화면은 조합별 바코드 변경을 지원하지 않음). -->
+        <div id="barcode-scan-modal" class="scan-modal-overlay hidden" th:unless="${isEdit}">
+            <div class="scan-modal">
+                <div class="scan-modal-header">
+                    <span class="scan-modal-title">바코드 스캔</span>
+                    <button type="button" id="barcode-scan-close" class="scan-modal-close" aria-label="닫기">✕</button>
+                </div>
+                <div id="barcode-scan-reader"></div>
+                <p id="barcode-scan-message" class="scan-modal-message"></p>
+            </div>
+        </div>
+        <script th:unless="${isEdit}" src="https://cdn.jsdelivr.net/npm/html5-qrcode@2.3.8/html5-qrcode.min.js" defer></script>
 
         <script th:inline="javascript">
             var INITIAL_OPTION_GROUPS = /*[[${form.optionGroups}]]*/ [];
@@ -393,6 +462,11 @@
                 // never travels through this form, see ADR 0001) — every use below is guarded.
                 var stocksJsonInput = document.getElementById('stocks-json-input');
                 var pricesJsonInput = document.getElementById('prices-json-input');
+                // barcodesJsonInput/singleBarcodeInput도 stocksJsonInput과 마찬가지로 수정
+                // 모드에는 없다(ProductEditForm에 barcodesJson 필드 자체가 없음) — 아래 모든
+                // 사용은 stocksJsonInput과 동일하게 null 체크로 감싼다.
+                var barcodesJsonInput = document.getElementById('barcodes-json-input');
+                var singleBarcodeInput = document.getElementById('single-barcode-input');
                 var basePriceInput = document.getElementById('price');
                 var surchargeFoldToggle = document.getElementById('surcharge-fold-toggle');
                 var surchargeFoldBody = document.getElementById('surcharge-fold-body');
@@ -475,6 +549,7 @@
                 // stock/price numbers survive re-rendering the table when an unrelated row changes.
                 var stockByComboKey = {};
                 var priceByComboKey = {};
+                var barcodeByComboKey = {};
                 // A combo's price is auto-recalculated (base + matching surcharges) on every
                 // render UNLESS the seller has directly edited that combo's price input, OR it
                 // was seeded from an existing variant (edit mode) — this set tracks both, so
@@ -826,6 +901,37 @@
 
                     row.appendChild(left);
                     row.appendChild(right);
+
+                    // 조합별 바코드 입력 — 수정 모드에는 없음(ProductEditForm이 barcodesJson을
+                    // 지원하지 않음, 위 stocksJsonInput 관련 주석과 동일한 이유).
+                    if (!IS_EDIT_MODE) {
+                        var barcodeRow = document.createElement('div');
+                        barcodeRow.className = 'variant-stock-barcode-row';
+
+                        var barcodeInput = document.createElement('input');
+                        barcodeInput.type = 'text';
+                        barcodeInput.placeholder = '바코드 (선택)';
+                        barcodeInput.value = barcodeByComboKey[combo.key] || '';
+                        barcodeInput.className = 'variant-stock-barcode-input';
+                        barcodeInput.addEventListener('input', function () {
+                            barcodeByComboKey[combo.key] = barcodeInput.value;
+                            updateTotalsAndHiddenFields();
+                        });
+
+                        var scanButton = document.createElement('button');
+                        scanButton.type = 'button';
+                        scanButton.className = 'variant-stock-scan-button';
+                        scanButton.textContent = '📷 스캔';
+                        // 이 조합 행이 렌더링될 때마다 새로 만들어지는 input이라 고정 id가 없다 —
+                        // 스캔 모달 스크립트(별도 IIFE)가 이벤트 위임으로 이 프로퍼티를 읽어서
+                        // 어느 입력칸에 스캔 결과를 채울지 알아낸다.
+                        scanButton.__scanTargetInput = barcodeInput;
+
+                        barcodeRow.appendChild(barcodeInput);
+                        barcodeRow.appendChild(scanButton);
+                        row.appendChild(barcodeRow);
+                    }
+
                     return row;
                 }
 
@@ -834,6 +940,7 @@
                     var total;
                     var stocks;
                     var prices;
+                    var barcodes;
                     if (combos.length === 0) {
                         var single = parseInt(singleStockInput.value, 10);
                         if (isNaN(single) || single < 0) {
@@ -842,6 +949,7 @@
                         total = single;
                         stocks = [single];
                         prices = [basePrice()];
+                        barcodes = [singleBarcodeInput ? (singleBarcodeInput.value.trim() || null) : null];
                     } else {
                         stocks = combos.map(function (combo) {
                             return stockByComboKey[combo.key] || 0;
@@ -852,12 +960,19 @@
                         prices = combos.map(function (combo) {
                             return combo.key in priceByComboKey ? priceByComboKey[combo.key] : autoPrice(combo);
                         });
+                        barcodes = combos.map(function (combo) {
+                            var value = (barcodeByComboKey[combo.key] || '').trim();
+                            return value ? value : null;
+                        });
                     }
                     totalStockDisplay.textContent = total + '개';
                     if (stocksJsonInput) {
                         stocksJsonInput.value = JSON.stringify(stocks);
                     }
                     pricesJsonInput.value = JSON.stringify(prices);
+                    if (barcodesJsonInput) {
+                        barcodesJsonInput.value = JSON.stringify(barcodes);
+                    }
                 }
 
                 function renderCombinationsAndTotals() {
@@ -869,7 +984,7 @@
                     // manually-overridden price can't silently reappear under a resurrected key.
                     var currentKeys = {};
                     combos.forEach(function (combo) { currentKeys[combo.key] = true; });
-                    [stockByComboKey, priceByComboKey, priceOverriddenByComboKey].forEach(function (map) {
+                    [stockByComboKey, priceByComboKey, priceOverriddenByComboKey, barcodeByComboKey].forEach(function (map) {
                         Object.keys(map).forEach(function (key) {
                             if (!(key in currentKeys)) {
                                 delete map[key];
@@ -931,6 +1046,9 @@
                     addRow();
                 });
                 singleStockInput.addEventListener('input', updateTotalsAndHiddenFields);
+                if (singleBarcodeInput) {
+                    singleBarcodeInput.addEventListener('input', updateTotalsAndHiddenFields);
+                }
                 basePriceInput.addEventListener('input', function () {
                     formatMoneyInput(basePriceInput);
                     renderCombinationsAndTotals();
@@ -1238,6 +1356,115 @@
                 });
 
                 updateButtonEnabled();
+            })();
+        </script>
+        <script th:unless="${isEdit}" th:inline="none">
+            // 바코드 카메라 스캔 — 버튼을 눌렀을 때만 카메라를 열고(자동 실행 없음), 스캔 성공 시
+            // 그 버튼이 가리키던 입력칸에 값을 채운다. 등록 화면에만 존재(수정 화면은
+            // barcodesJson 자체를 지원하지 않음).
+            (function () {
+                var modal = document.getElementById('barcode-scan-modal');
+                var closeButton = document.getElementById('barcode-scan-close');
+                var messageEl = document.getElementById('barcode-scan-message');
+                var READER_ID = 'barcode-scan-reader';
+                if (!modal || !closeButton || !messageEl) {
+                    return;
+                }
+
+                var scanner = null;
+                var activeTargetInput = null;
+
+                function showMessage(text, isError) {
+                    messageEl.textContent = text || '';
+                    messageEl.classList.toggle('error', !!isError);
+                }
+
+                function stopScanner() {
+                    if (!scanner) {
+                        return;
+                    }
+                    var toStop = scanner;
+                    scanner = null;
+                    toStop.stop().catch(function () {
+                        // 시작되기 전에 닫힌 경우 등 — 무시해도 안전.
+                    });
+                }
+
+                function closeModal() {
+                    stopScanner();
+                    modal.classList.add('hidden');
+                    activeTargetInput = null;
+                }
+
+                closeButton.addEventListener('click', closeModal);
+
+                function openModal(targetInput) {
+                    activeTargetInput = targetInput;
+                    modal.classList.remove('hidden');
+
+                    // 카메라는 HTTPS(또는 localhost)에서만 쓸 수 있다 — 아예 시도하지 않고
+                    // 바로 안내(로컬 개발 http://<사설IP>:포트 같은 경우가 여기 걸린다).
+                    if (!window.isSecureContext) {
+                        showMessage('카메라는 HTTPS 또는 localhost에서만 사용할 수 있어요. 바코드를 직접 입력해주세요.', true);
+                        return;
+                    }
+                    if (typeof Html5Qrcode === 'undefined') {
+                        showMessage('스캔 기능을 불러오지 못했어요. 바코드를 직접 입력해주세요.', true);
+                        return;
+                    }
+
+                    showMessage('카메라를 준비하는 중...');
+                    scanner = new Html5Qrcode(READER_ID, {
+                        formatsToSupport: [
+                            Html5QrcodeSupportedFormats.EAN_13,
+                            Html5QrcodeSupportedFormats.EAN_8,
+                            Html5QrcodeSupportedFormats.UPC_A,
+                            Html5QrcodeSupportedFormats.UPC_E,
+                            Html5QrcodeSupportedFormats.CODE_128,
+                            Html5QrcodeSupportedFormats.CODE_39,
+                            Html5QrcodeSupportedFormats.CODABAR,
+                            Html5QrcodeSupportedFormats.ITF
+                        ]
+                    });
+
+                    scanner.start(
+                        { facingMode: 'environment' },
+                        { fps: 10, qrbox: { width: 250, height: 150 } },
+                        function onScanSuccess(decodedText) {
+                            if (activeTargetInput) {
+                                activeTargetInput.value = decodedText;
+                                activeTargetInput.dispatchEvent(new Event('input', { bubbles: true }));
+                            }
+                            closeModal();
+                        },
+                        function onScanFailure() {
+                            // 프레임마다 바코드를 못 찾았을 때 계속 호출됨(조준 중엔 정상) — 무시.
+                        }
+                    ).then(function () {
+                        showMessage('바코드를 카메라 화면에 비춰주세요.');
+                    }).catch(function () {
+                        showMessage('카메라를 사용할 수 없어요(권한이 거부됐거나 지원하지 않는 기기예요). 바코드를 직접 입력해주세요.', true);
+                    });
+                }
+
+                document.querySelectorAll('.barcode-scan-trigger').forEach(function (button) {
+                    button.addEventListener('click', function () {
+                        var targetId = button.getAttribute('data-target');
+                        var targetInput = targetId ? document.getElementById(targetId) : null;
+                        if (targetInput) {
+                            openModal(targetInput);
+                        }
+                    });
+                });
+
+                // 옵션 조합 행은 다른 스크립트(위쪽 IIFE)가 동적으로 만들기 때문에, 이벤트
+                // 위임으로 이후에 추가되는 스캔 버튼까지 전부 잡는다.
+                document.addEventListener('click', function (event) {
+                    var button = event.target.closest && event.target.closest('.variant-stock-scan-button');
+                    if (button && button.__scanTargetInput) {
+                        openModal(button.__scanTargetInput);
+                    }
+                });
             })();
         </script>
     </main>
